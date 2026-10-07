@@ -1,0 +1,7 @@
+# append-only. an item regression is accepted only by an entry added in the same change (C11 §3.5):
+# - item: <item id>
+#   from: <baseline outcome>
+#   to: <new outcome>
+#   reason: why the new behaviour is right
+#   pr: 57
+[]

@@ -1,0 +1,45 @@
+{
+  "schema_version": 1,
+  "suite": "cache",
+  "recorded_from": {
+    "embedder": "hashing-256:256",
+    "threshold": 0.135,
+    "num_sig": true
+  },
+  "items": {
+    "p0001": "missed",
+    "p0002": "missed",
+    "p0003": "hit",
+    "p0004": "missed",
+    "p0005": "missed",
+    "p0006": "missed",
+    "p0007": "missed",
+    "p0008": "hit",
+    "p0009": "hit",
+    "p0010": "missed",
+    "p0011": "missed",
+    "p0012": "rejected",
+    "p0013": "rejected",
+    "p0014": "rejected",
+    "p0015": "rejected",
+    "p0016": "false_hit",
+    "p0017": "rejected",
+    "p0018": "rejected",
+    "p0019": "rejected",
+    "p0020": "false_hit",
+    "p0021": "rejected",
+    "p0022": "rejected",
+    "p0023": "false_hit",
+    "p0024": "rejected",
+    "p0025": "rejected",
+    "p0026": "rejected",
+    "p0027": "rejected",
+    "p0028": "missed",
+    "p0029": "rejected",
+    "p0030": "missed"
+  },
+  "metrics": {
+    "precision": 0.25,
+    "hit_rate": 0.2
+  }
+}
