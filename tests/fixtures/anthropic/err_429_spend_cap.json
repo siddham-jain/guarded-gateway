@@ -1,0 +1,12 @@
+{
+  "_synthetic": true,
+  "type": "error",
+  "error": {
+    "type": "rate_limit_error",
+    "message": "You have reached your monthly spend limit.",
+    "details": {
+      "error_code": "enforced_spend_limit_reached"
+    }
+  },
+  "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG"
+}

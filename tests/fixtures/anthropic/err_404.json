@@ -1,0 +1,9 @@
+{
+  "_synthetic": true,
+  "type": "error",
+  "error": {
+    "type": "not_found_error",
+    "message": "model: claude-nope"
+  },
+  "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG"
+}

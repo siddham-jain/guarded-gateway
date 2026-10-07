@@ -1,0 +1,9 @@
+{
+  "_synthetic": true,
+  "type": "error",
+  "error": {
+    "type": "billing_error",
+    "message": "Your credit balance is too low to access the Anthropic API."
+  },
+  "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG"
+}

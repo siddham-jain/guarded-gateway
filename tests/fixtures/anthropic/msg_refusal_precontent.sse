@@ -1,0 +1,11 @@
+: synthetic, written from the documented messages streaming format (research provider-anthropic.md §3)
+
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_refuse","type":"message","role":"assistant","model":"claude-opus-5-5","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":412,"output_tokens":0}}}
+
+event: message_delta
+data: {"type":"message_delta","delta":{"stop_reason":"refusal","stop_sequence":null,"stop_details":{"type":"refusal","category":"cyber","explanation":"This request was declined because it could enable cyber harm."}},"usage":{"output_tokens":0}}
+
+event: message_stop
+data: {"type":"message_stop"}
+

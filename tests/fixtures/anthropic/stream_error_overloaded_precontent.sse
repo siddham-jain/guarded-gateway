@@ -1,0 +1,11 @@
+: synthetic, written from the documented messages streaming format (research provider-anthropic.md §3)
+
+event: message_start
+data: {"type":"message_start","message":{"id":"msg_01Text","type":"message","role":"assistant","model":"claude-haiku-4-5","content":[],"stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":25,"output_tokens":1}}}
+
+event: ping
+data: {"type":"ping"}
+
+event: error
+data: {"type":"error","error":{"type":"overloaded_error","message":"Overloaded"}}
+

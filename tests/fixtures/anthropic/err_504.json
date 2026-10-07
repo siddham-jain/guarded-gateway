@@ -1,0 +1,9 @@
+{
+  "_synthetic": true,
+  "type": "error",
+  "error": {
+    "type": "timeout_error",
+    "message": "Request timed out"
+  },
+  "request_id": "req_018EeWyXxfu5pfWkrYcMdjWG"
+}
