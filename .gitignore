@@ -1,0 +1,27 @@
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+dist/
+loadtest/results/*.html
+plans/
+.models/
+.hypothesis/
+.import_linter_cache/
+/:memory:*
+# raw jev responses stay local (typesafe terms forbid redistribution)
+spikes/out/
+# team-only material: per-member handoffs and the history script
+team/
+# eval run outputs hold jev scores and model answers; they stay local
+evals/routing/runs/
+# raw load-test artifacts stay local; the markdown report per run is committed
+loadtest/results/*/*
+!loadtest/results/*/report.md
+# eval gate output (ci uploads it as an artifact)
+out/
+.claude

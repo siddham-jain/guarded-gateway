@@ -1,0 +1,140 @@
+[project]
+name = "gg"
+version = "0.1.0"
+description = "Multi-provider OpenAI-compatible LLM gateway with routing, guardrails, caching and observability"
+readme = "README.md"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "fastapi>=0.142,<0.143",
+  "uvicorn[standard]>=0.54,<0.55",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.15,<3",
+  "httpx2>=2.13,<3",
+  "orjson>=3.12,<4",
+  "pyyaml>=6.0.2,<7",
+  "structlog>=26.1",
+  "anyio>=4.15,<5",
+  "prometheus-client>=0.26,<0.27",
+  "redis[hiredis]>=8.1,<9",
+  "tiktoken>=0.14,<0.15",
+]
+
+[project.optional-dependencies]
+ml = [
+  "onnxruntime>=1.22",
+  "fastembed>=0.8,<0.9",
+  "presidio-analyzer>=2.2",
+  "spacy>=3.8",
+  "en-core-web-sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.8.0/en_core_web_sm-3.8.0-py3-none-any.whl",
+]
+
+[project.scripts]
+gg = "gg.cli.main:main"
+
+[dependency-groups]
+dev = [
+  "pytest>=9.1",
+  "pytest-asyncio>=1.4",
+  "pytest-cov>=6",
+  "hypothesis>=6.160",
+  "openai>=3.24",
+  "fakeredis[lua]>=2.39",
+  "ruff>=0.16",
+  "pyright>=1.1.414",
+  "import-linter>=2.15",
+]
+loadtest = [
+    "locust>=2.40",
+]
+perf = ["locust>=2.46"]
+
+[build-system]
+requires = ["uv_build>=0.9,<0.13"]
+build-backend = "uv_build"
+
+[tool.ruff]
+target-version = "py313"
+line-length = 110
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "ASYNC", "S", "SIM", "RUF", "PERF", "PT", "TID"]
+ignore = ["S101"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S105", "S106"]
+# one-off measurement scripts keep their long literal tables
+"spikes/**" = ["E501"]
+
+[tool.ruff.lint.flake8-tidy-imports]
+ban-relative-imports = "all"
+
+[tool.pyright]
+pythonVersion = "3.13"
+venvPath = "."
+venv = ".venv"
+include = ["src"]
+typeCheckingMode = "strict"
+reportMissingTypeStubs = false
+reportPrivateUsage = false
+# untyped third-party apis (structlog, yaml) make the unknown-type family pure noise
+reportUnknownMemberType = false
+reportUnknownVariableType = false
+reportUnknownArgumentType = false
+reportUnknownLambdaType = false
+reportUnknownParameterType = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+addopts = "-ra --strict-markers -m 'not live'"
+markers = [
+  "unit",
+  "contract",
+  "integration",
+  "eval",
+  "redis: needs a real redis server",
+  "live: hits real providers; nightly only",
+]
+filterwarnings = ["error"]
+
+[tool.importlinter]
+root_package = "gg"
+exclude_type_checking_imports = true
+
+[[tool.importlinter.contracts]]
+name = "layers"
+type = "layers"
+layers = [
+  "gg.cli : gg.evalgate",
+  "gg.app",
+  "gg.api",
+  "gg.auth : gg.providers : gg.reliability : gg.routing : gg.guardrails : gg.cache : gg.limits : gg.observability",
+  "gg.pipeline : gg.plugins : gg.config",
+  "gg.core",
+]
+
+[[tool.importlinter.contracts]]
+name = "feature packages only see each other's public base modules"
+type = "independence"
+unmatched_ignore_imports_alerting = "none"
+modules = [
+  "gg.auth",
+  "gg.providers",
+  "gg.reliability",
+  "gg.routing",
+  "gg.guardrails",
+  "gg.cache",
+  "gg.limits",
+  "gg.observability",
+]
+ignore_imports = [
+  "gg.** -> gg.providers.base",
+  "gg.** -> gg.auth.base",
+  "gg.** -> gg.routing.base",
+  "gg.** -> gg.guardrails.base",
+  "gg.** -> gg.cache.base",
+  "gg.** -> gg.limits.base",
+  "gg.** -> gg.observability.base",
+]
