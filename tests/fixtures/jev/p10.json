@@ -1,0 +1,82 @@
+{
+  "expected_tier": "mid",
+  "state": {
+    "request": "Summarise the pros and cons of PostgreSQL versus MySQL for a small SaaS app in a short table.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c5492bf70359252dd16a9b5d0de"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "mid",
+        "confidence": 0.77,
+        "probabilities": {
+          "mid": 0.83,
+          "small": 0.12,
+          "frontier_reasoning": 0.0,
+          "frontier": 0.05
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.29
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 1.5,
+        "confidence": 0.58,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.5,
+          "2": 0.5,
+          "3": 0.0,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "rewrite_summarize_translate",
+        "confidence": 0.78,
+        "probabilities": {
+          "chat": 0.0,
+          "other": 0.0,
+          "extraction_classification": 0.0,
+          "math_reasoning": 0.0,
+          "factual_qa": 0.02,
+          "rewrite_summarize_translate": 0.8,
+          "creative_writing": 0.0,
+          "analysis_planning": 0.17,
+          "coding": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.41
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.07
+      }
+    },
+    "usage": {
+      "input_tokens": 1038,
+      "output_tokens": 230
+    }
+  }
+}

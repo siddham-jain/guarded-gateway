@@ -1,0 +1,82 @@
+{
+  "expected_tier": "frontier_reasoning",
+  "state": {
+    "request": "Prove that there are infinitely many primes of the form 4k+3.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c54a6e47c99a674ed19f0ce95f2"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "frontier_reasoning",
+        "confidence": 0.35,
+        "probabilities": {
+          "small": 0.0,
+          "frontier_reasoning": 0.52,
+          "frontier": 0.22,
+          "mid": 0.26
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.3
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 2.56,
+        "confidence": 0.41,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.07,
+          "2": 0.44,
+          "3": 0.35,
+          "4": 0.14
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "math_reasoning",
+        "confidence": 1.0,
+        "probabilities": {
+          "chat": 0.0,
+          "rewrite_summarize_translate": 0.0,
+          "factual_qa": 0.0,
+          "math_reasoning": 1.0,
+          "other": 0.0,
+          "analysis_planning": 0.0,
+          "extraction_classification": 0.0,
+          "coding": 0.0,
+          "creative_writing": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.83
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.06
+      }
+    },
+    "usage": {
+      "input_tokens": 1030,
+      "output_tokens": 233
+    }
+  }
+}

@@ -1,0 +1,57 @@
+# gg/auto routing (c5): a scorer estimates P(strong beats weak) per prompt; the policy routes strong iff score >= alpha.
+# raise policy.threshold to save money, lower it to favour quality. hashed into config_hash with the question set.
+version: 1
+enabled: true                       # false: no scorer calls; every gg/auto request takes the fallback route
+
+scorer:
+  type: jev                         # jev | static | null (registry in gg.routing.factory)
+  deadline_ms: 600                  # total scoring budget, retries included
+  jev:
+    url: https://api.typesafe.ai/v1/systemone
+    model: jev-1.13.0               # pinned; thresholds are only valid for this model
+    question_set: qset-v1           # config/routing/qsets/qset-v1.json
+    state_builder: state-v1
+    strong_tiers: [frontier, frontier_reasoning]
+    score_signal: strong_helps      # tier | strong_helps; see evals/routing for the comparison
+    price_per_mtok_input_usd: 0.042
+    attempt_timeout_ms: 400         # s2 from india: warm p50 309 ms, p95 432 ms; re-measure from the host
+    connect_timeout_ms: 300
+    max_attempts: 2                 # at most one retry, only on retry_on_status or a network error
+    min_attempt_budget_ms: 150
+    retry_on_status: [429, 500, 502, 503, 504, 529]
+    retry_backoff_ms: [100, 150]
+    breaker: {consecutive_failures: 3, cooldown_s: 30, auth_cooldown_s: 300}
+    state:
+      request_max_chars: 4000
+      request_head_chars: 3000
+      request_tail_chars: 900
+      prior_user_turns: 2
+      prior_user_turn_max_chars: 600
+      followup_max_words: 30
+      last_assistant_max_chars: 800
+      include_system_excerpt: true
+      system_excerpt_max_chars: 500
+      new_max_turns: 1
+      short_max_turns: 5
+  static: {score: 0.5}
+
+cache:                              # raw jev answers keyed by sha256(scorer_version, scrubbed state); never decisions
+  enabled: true
+  lru_entries: 10000
+  ttl_s: 86400
+
+policy:
+  threshold: 0.25                   # balanced preset from the routing eval (tune split); economy 0.30, quality 0.19
+  default_profile: default
+  fallback_route: strong            # scorer failure fails open to strong; keys may override
+  routing_claim: {threshold: 0.5, action: strong}
+  session: {reuse_tool_continuations: true, ratchet: false, ttl_s: 3600, max_entries: 10000}
+  effort: {mode: fixed, weak: none, strong: low}
+
+profiles:                           # tier groups live in config/models.yaml
+  default: {weak_group: weak, strong_group: strong, calibrated: false}
+  anthropic: {weak_group: weak-anthropic, strong_group: strong-anthropic, calibrated: false}
+
+headers:
+  expose_score: true
+  decimals: 2

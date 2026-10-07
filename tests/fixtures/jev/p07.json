@@ -1,0 +1,82 @@
+{
+  "expected_tier": "mid",
+  "state": {
+    "request": "Write a polite email declining a meeting invite because of a scheduling conflict.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c548b6776cdae9cafee5e96cc35"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "small",
+        "confidence": 0.57,
+        "probabilities": {
+          "frontier_reasoning": 0.0,
+          "frontier": 0.0,
+          "mid": 0.32,
+          "small": 0.68
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.19
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 0.96,
+        "confidence": 0.97,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.04,
+          "1": 0.96,
+          "2": 0.0,
+          "3": 0.0,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "creative_writing",
+        "confidence": 0.86,
+        "probabilities": {
+          "analysis_planning": 0.0,
+          "extraction_classification": 0.0,
+          "factual_qa": 0.0,
+          "other": 0.11,
+          "creative_writing": 0.88,
+          "chat": 0.0,
+          "rewrite_summarize_translate": 0.01,
+          "coding": 0.0,
+          "math_reasoning": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.15
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.06
+      }
+    },
+    "usage": {
+      "input_tokens": 1027,
+      "output_tokens": 228
+    }
+  }
+}

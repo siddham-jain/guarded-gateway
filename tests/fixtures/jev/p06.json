@@ -1,0 +1,85 @@
+{
+  "expected_tier": "small",
+  "state": {
+    "request": "yes, go ahead",
+    "recent_user_turns": [
+      "Should I rename the column `created` to `created_at` in the users table?"
+    ],
+    "context": {
+      "conversation_depth": "short",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c54890776e5ae9ce2f0b26bb45c"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "small",
+        "confidence": 0.38,
+        "probabilities": {
+          "frontier": 0.02,
+          "small": 0.53,
+          "frontier_reasoning": 0.0,
+          "mid": 0.45
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.25
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 0.79,
+        "confidence": 0.34,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.48,
+          "1": 0.25,
+          "2": 0.26,
+          "3": 0.01,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "coding",
+        "confidence": 0.25,
+        "probabilities": {
+          "coding": 0.34,
+          "analysis_planning": 0.07,
+          "rewrite_summarize_translate": 0.01,
+          "extraction_classification": 0.03,
+          "other": 0.3,
+          "math_reasoning": 0.0,
+          "chat": 0.24,
+          "factual_qa": 0.01,
+          "creative_writing": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.2
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.12
+      }
+    },
+    "usage": {
+      "input_tokens": 1048,
+      "output_tokens": 225
+    }
+  }
+}

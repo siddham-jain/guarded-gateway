@@ -1,0 +1,82 @@
+{
+  "expected_tier": "frontier",
+  "state": {
+    "request": "Our p99 latency doubled after upgrading from Python 3.12 to 3.13 but p50 is unchanged. Walk through how to find the cause.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c54a1fd74c5812058f2a4db4f67"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "task_type": {
+        "type": "choice",
+        "choice": "analysis_planning",
+        "confidence": 1.0,
+        "probabilities": {
+          "math_reasoning": 0.0,
+          "analysis_planning": 1.0,
+          "chat": 0.0,
+          "creative_writing": 0.0,
+          "coding": 0.0,
+          "other": 0.0,
+          "factual_qa": 0.0,
+          "extraction_classification": 0.0,
+          "rewrite_summarize_translate": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.83
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.06
+      },
+      "tier": {
+        "type": "choice",
+        "choice": "frontier",
+        "confidence": 0.97,
+        "probabilities": {
+          "frontier_reasoning": 0.0,
+          "mid": 0.02,
+          "small": 0.0,
+          "frontier": 0.98
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.64
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 2.6,
+        "confidence": 0.66,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.4,
+          "3": 0.6,
+          "4": 0.0
+        }
+      }
+    },
+    "usage": {
+      "input_tokens": 1049,
+      "output_tokens": 230
+    }
+  }
+}

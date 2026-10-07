@@ -1,0 +1,82 @@
+{
+  "expected_tier": "small",
+  "state": {
+    "request": "Extract every email address from: contact [EMAIL_1] or [EMAIL_2] for billing.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c54868278c7829340140f84df8b"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "small",
+        "confidence": 1.0,
+        "probabilities": {
+          "frontier": 0.0,
+          "frontier_reasoning": 0.0,
+          "small": 1.0,
+          "mid": 0.0
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.21
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 0.72,
+        "confidence": 0.72,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.31,
+          "1": 0.67,
+          "2": 0.02,
+          "3": 0.0,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "extraction_classification",
+        "confidence": 1.0,
+        "probabilities": {
+          "chat": 0.0,
+          "other": 0.0,
+          "analysis_planning": 0.0,
+          "math_reasoning": 0.0,
+          "coding": 0.0,
+          "creative_writing": 0.0,
+          "rewrite_summarize_translate": 0.0,
+          "extraction_classification": 1.0,
+          "factual_qa": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.21
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.07
+      }
+    },
+    "usage": {
+      "input_tokens": 1034,
+      "output_tokens": 231
+    }
+  }
+}

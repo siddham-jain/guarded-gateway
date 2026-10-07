@@ -1,0 +1,85 @@
+{
+  "expected_tier": "frontier",
+  "state": {
+    "request": "Our Celery workers randomly hang after ~2 hours with no error. Redis broker, prefetch 4, acks_late on. What could cause this and how do I debug it?",
+    "recent_user_turns": [
+      "We moved from RabbitMQ to Redis last week."
+    ],
+    "context": {
+      "conversation_depth": "short",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c5499c5712f8e075d9736ed3f3c"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "frontier",
+        "confidence": 0.98,
+        "probabilities": {
+          "frontier_reasoning": 0.0,
+          "small": 0.0,
+          "frontier": 0.99,
+          "mid": 0.01
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.65
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 2.51,
+        "confidence": 0.59,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.49,
+          "3": 0.51,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "analysis_planning",
+        "confidence": 0.89,
+        "probabilities": {
+          "rewrite_summarize_translate": 0.0,
+          "factual_qa": 0.06,
+          "other": 0.01,
+          "coding": 0.02,
+          "chat": 0.01,
+          "creative_writing": 0.0,
+          "extraction_classification": 0.01,
+          "analysis_planning": 0.89,
+          "math_reasoning": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.76
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.05
+      }
+    },
+    "usage": {
+      "input_tokens": 1076,
+      "output_tokens": 230
+    }
+  }
+}

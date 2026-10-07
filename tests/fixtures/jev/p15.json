@@ -1,0 +1,82 @@
+{
+  "expected_tier": "frontier",
+  "state": {
+    "request": "Refactor this React component tree so form state lives in a reducer and validation runs on blur; explain the migration across the 6 files involved.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c549f077629911bd42dcb3dc536"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "frontier",
+        "confidence": 0.99,
+        "probabilities": {
+          "frontier_reasoning": 0.0,
+          "small": 0.0,
+          "frontier": 0.99,
+          "mid": 0.01
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.78
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 2.89,
+        "confidence": 0.91,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.11,
+          "3": 0.89,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "coding",
+        "confidence": 0.99,
+        "probabilities": {
+          "rewrite_summarize_translate": 0.0,
+          "factual_qa": 0.0,
+          "coding": 1.0,
+          "extraction_classification": 0.0,
+          "analysis_planning": 0.0,
+          "creative_writing": 0.0,
+          "math_reasoning": 0.0,
+          "chat": 0.0,
+          "other": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.9
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.07
+      }
+    },
+    "usage": {
+      "input_tokens": 1042,
+      "output_tokens": 227
+    }
+  }
+}

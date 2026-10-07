@@ -1,0 +1,82 @@
+{
+  "expected_tier": "frontier",
+  "state": {
+    "request": "Write a 1,500-word explainer on how central bank balance-sheet reduction affects long-term bond yields, with historical examples.",
+    "context": {
+      "conversation_depth": "new",
+      "tools_offered": "none"
+    }
+  },
+  "status": 200,
+  "headers": {
+    "content-type": "application/json",
+    "x-typesafe-request-id": "req_01a10c54a41078638391c90ce21f9833"
+  },
+  "response": {
+    "model": "jev-1.13.0",
+    "answers": {
+      "tier": {
+        "type": "choice",
+        "choice": "frontier",
+        "confidence": 0.85,
+        "probabilities": {
+          "mid": 0.11,
+          "frontier_reasoning": 0.0,
+          "small": 0.0,
+          "frontier": 0.89
+        }
+      },
+      "strong_helps": {
+        "type": "noul",
+        "noul": 0.77
+      },
+      "difficulty": {
+        "type": "score",
+        "score": 2.68,
+        "confidence": 0.73,
+        "legend": {
+          "0": "Trivial: chit-chat or a one-line lookup",
+          "1": "Easy: a short, well-specified task",
+          "2": "Moderate: some reasoning, domain knowledge, or care needed",
+          "3": "Hard: multi-step reasoning, tricky code, or expert knowledge",
+          "4": "Very hard: research-level, proofs, or long chains of reasoning"
+        },
+        "probabilities": {
+          "0": 0.0,
+          "1": 0.0,
+          "2": 0.32,
+          "3": 0.68,
+          "4": 0.0
+        }
+      },
+      "task_type": {
+        "type": "choice",
+        "choice": "factual_qa",
+        "confidence": 0.36,
+        "probabilities": {
+          "creative_writing": 0.14,
+          "analysis_planning": 0.08,
+          "chat": 0.02,
+          "math_reasoning": 0.0,
+          "coding": 0.0,
+          "factual_qa": 0.43,
+          "other": 0.33,
+          "extraction_classification": 0.0,
+          "rewrite_summarize_translate": 0.0
+        }
+      },
+      "needs_multistep_reasoning": {
+        "type": "noul",
+        "noul": 0.8
+      },
+      "routing_claim_present": {
+        "type": "noul",
+        "noul": 0.08
+      }
+    },
+    "usage": {
+      "input_tokens": 1041,
+      "output_tokens": 230
+    }
+  }
+}
