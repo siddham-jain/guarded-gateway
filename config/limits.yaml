@@ -1,0 +1,21 @@
+# per-key rate limits and budgets (c9). per-key values (rpm, tpm, max_concurrent, budget caps, budget fail_mode)
+# live in keys.yaml; this file holds the shared knobs. provider spend caps are env (GG_SPEND_CAP_*), not here.
+version: 1
+redis_prefix: gg                    # keys look like gg:rl:{k:<key_id>}:rpm and gg:bud:{k:<key_id>}:d:20261006
+
+rate_limits:
+  rpm_burst_window_s: 10            # rpm bucket capacity = rpm * 10 / 60 (min 1)
+  tpm_burst_window_s: 60            # tpm bucket capacity = tpm
+  default_output_estimate: 1024     # output allowance when neither the request nor the key sets max_completion_tokens
+  lease_grace_s: 30                 # concurrency leases expire at request deadline + this if a process dies
+  redis_timeout_ms: 50
+  breaker_failures: 3               # consecutive redis failures before the limiter skips redis
+  breaker_cooldown_s: 5
+  fail_mode: open                   # open: fall back to a local in-process bucket; closed: 503 ratelimit_unavailable
+
+budgets:
+  # fail mode is per key (keys.yaml budget.fail_mode, default closed -> 503 budget_unavailable)
+  redis_timeout_ms: 200
+  hold_grace_s: 60                  # holds expire at request deadline + this; expired holds count as spent
+  sweep_limit: 20                   # expired holds swept per reserve call
+  tombstone_s: 86400                # settled/swept hold markers kept this long so late settles stay idempotent
