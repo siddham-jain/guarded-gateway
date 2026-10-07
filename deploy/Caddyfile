@@ -1,0 +1,36 @@
+# hosted demo edge (compose profile `hosted`); certificates come from let's encrypt over http-01.
+# only the public api and health endpoints are proxied; /metrics, /docs and anything else is a 404 here.
+{$GG_PUBLIC_HOST} {
+	encode zstd gzip
+
+	request_body {
+		max_size 256KB
+	}
+
+	@public path /v1/* /healthz /readyz /version
+	handle @public {
+		reverse_proxy gateway:8000 {
+			# sse must not be buffered
+			flush_interval -1
+			transport http {
+				# longer than the gateway's 300 s max deadline
+				read_timeout 330s
+			}
+		}
+	}
+
+	handle {
+		respond 404
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		-Server
+	}
+
+	# caddy redacts authorization and cookie headers in access logs; bodies are never logged
+	log {
+		output stdout
+		format json
+	}
+}

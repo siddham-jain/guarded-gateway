@@ -1,0 +1,97 @@
+name: deploy
+
+# deploys the hosted demo: ssh to the vm, whose forced command (deploy/oracle/deploy.sh) checks out the sha,
+# rebuilds the gateway, verifies /version and /readyz, and rolls back on failure.
+# inert until the DEPLOY_HOST, DEPLOY_SSH_KEY and DEPLOY_KNOWN_HOSTS repository secrets are set.
+on:
+  workflow_run:
+    workflows: [ci]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      sha:
+        description: "full commit sha to (re)deploy; empty deploys the head of main"
+        required: false
+        default: ""
+
+concurrency:
+  group: deploy-prod
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      SHA: ${{ github.event.workflow_run.head_sha || inputs.sha || github.sha }}
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER || 'deploy' }}
+      PUBLIC_URL: ${{ vars.GG_PUBLIC_URL }}
+    steps:
+      - name: check deploy secrets
+        id: gate
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          if [ -z "$DEPLOY_HOST" ] || [ -z "$DEPLOY_SSH_KEY" ] || [ -z "$DEPLOY_KNOWN_HOSTS" ]; then
+            echo "::notice::deploy secrets are not set; skipping the deploy"
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
+          if ! printf '%s' "$SHA" | grep -Eq '^[0-9a-f]{40}$'; then
+            echo "::error::not a full commit sha: $SHA"
+            exit 1
+          fi
+
+      - name: deploy on the vm
+        if: steps.gate.outputs.enabled == 'true'
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          printf '%s\n' "$DEPLOY_SSH_KEY" > "$RUNNER_TEMP/deploy_key"
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > "$RUNNER_TEMP/known_hosts"
+          ssh -i "$RUNNER_TEMP/deploy_key" \
+            -o UserKnownHostsFile="$RUNNER_TEMP/known_hosts" -o StrictHostKeyChecking=yes \
+            -o ServerAliveInterval=30 -o BatchMode=yes \
+            "$DEPLOY_USER@$DEPLOY_HOST" "deploy $SHA"
+
+      - name: verify from outside
+        if: steps.gate.outputs.enabled == 'true' && env.PUBLIC_URL != ''
+        run: |
+          for _ in $(seq 1 30); do
+            deployed=$(curl -fsS --max-time 5 "$PUBLIC_URL/version" | jq -r .git_sha || true)
+            if [ "$deployed" = "$SHA" ] && curl -fsS --max-time 5 -o /dev/null "$PUBLIC_URL/readyz"; then
+              echo "serving $SHA"
+              exit 0
+            fi
+            sleep 10
+          done
+          echo "::error::$PUBLIC_URL is not serving $SHA"
+          exit 1
+
+      - name: smoke request
+        if: steps.gate.outputs.enabled == 'true' && env.PUBLIC_URL != ''
+        env:
+          SMOKE_KEY: ${{ secrets.GG_SMOKE_KEY }}
+        run: |
+          if [ -z "$SMOKE_KEY" ]; then
+            echo "::notice::GG_SMOKE_KEY is not set; skipping the smoke request"
+            exit 0
+          fi
+          curl -fsS --max-time 60 "$PUBLIC_URL/v1/chat/completions" \
+            -H "Authorization: Bearer $SMOKE_KEY" -H 'content-type: application/json' \
+            -d '{"model":"gg/weak","max_completion_tokens":5,"messages":[{"role":"user","content":"ping"}]}' \
+            -o /dev/null -w '%{http_code}\n'
+
+      - name: clean up
+        if: always()
+        run: rm -f "$RUNNER_TEMP/deploy_key" "$RUNNER_TEMP/known_hosts"

@@ -1,0 +1,21 @@
+#cloud-config
+# optional: paste into "show advanced options > management > cloud-init script" when creating the instance.
+# replace the three values first; progress goes to /var/log/gg-bootstrap.log. the same steps run by hand with
+# deploy/oracle/bootstrap.sh (docs/deploy.md).
+package_update: true
+packages: [git]
+write_files:
+  - path: /etc/gg-bootstrap.env
+    permissions: "0600"
+    content: |
+      GG_REPO_URL=https://github.com/OWNER/REPO.git
+      GG_PUBLIC_HOST=gg-demo.duckdns.org
+      GG_DEPLOY_PUBKEY="ssh-ed25519 AAAA_REPLACE_ME gg-deploy"
+runcmd:
+  - - bash
+    - -c
+    - |
+      set -a && . /etc/gg-bootstrap.env && set +a
+      rm -rf /tmp/gg-bootstrap
+      git clone --depth 1 "$GG_REPO_URL" /tmp/gg-bootstrap
+      bash /tmp/gg-bootstrap/deploy/oracle/bootstrap.sh > /var/log/gg-bootstrap.log 2>&1

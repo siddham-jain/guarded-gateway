@@ -1,0 +1,60 @@
+# hosted demo keys template; the hashes below are placeholders that match no token.
+# on the vm: copy to /opt/gg/keys.yaml (0600), mint each key with
+#   docker compose run --rm --no-deps gateway gg keys create --id ID --name NAME
+# and replace hash/prefix with the printed entry. tokens go to their holders privately, never into git.
+# point compose at it with GG_DEPLOY_KEYS_FILE=/opt/gg/keys.yaml in .env; changes apply on restart.
+version: 1
+defaults:
+  allowed_models: ["gg/auto", "gg/weak", "gg/strong"]
+  rate_limits: {rpm: 10, tpm: 20000, max_concurrent: 2}
+  budget: {monthly_usd: "0.25", daily_usd: "0.10", soft_limit_pct: 0.8, max_request_usd: "0.02"}
+  limits: {max_body_bytes: 65536, max_completion_tokens: 512, max_n: 1}
+  guardrails: {policy_id: default}
+  cache: {scope: key, semantic: true}
+  flags: {allow_free_tier_providers: true, allow_premium: false}
+keys:
+  # one per grader; expires two weeks after grading ends
+  - id: grader-1
+    name: Grader 1
+    hash: sha256:0000000000000000000000000000000000000000000000000000000000000001
+    prefix: gg-live-0001
+    created_at: 2026-10-08
+    expires_at: 2026-12-31T23:59:59Z
+    tags: [demo]
+  - id: grader-2
+    name: Grader 2
+    hash: sha256:0000000000000000000000000000000000000000000000000000000000000002
+    prefix: gg-live-0002
+    created_at: 2026-10-08
+    expires_at: 2026-12-31T23:59:59Z
+    tags: [demo]
+  # live presentation: may call the chaos alias and capture scrubbed content; revoke afterwards
+  - id: presenter
+    name: Presenter
+    hash: sha256:0000000000000000000000000000000000000000000000000000000000000003
+    prefix: gg-live-0003
+    created_at: 2026-10-08
+    expires_at: 2026-11-30T23:59:59Z
+    tags: [demo, presenter]
+    allowed_models: ["gg/auto", "gg/weak", "gg/strong", "gg/demo-chaos"]
+    budget: {monthly_usd: "1.00", daily_usd: "0.50"}
+    flags: {capture_content: true}
+  # deploy smoke test from ci
+  - id: smoke
+    name: Deploy smoke test
+    hash: sha256:0000000000000000000000000000000000000000000000000000000000000004
+    prefix: gg-live-0004
+    created_at: 2026-10-08
+    allowed_models: ["gg/weak"]
+    rate_limits: {rpm: 5, tpm: 2000, max_concurrent: 1}
+    budget: {monthly_usd: "0.05", daily_usd: "0.02"}
+    limits: {max_completion_tokens: 16}
+  # operator key: still served while GG_MAINTENANCE=1 (tag admin)
+  - id: ops
+    name: Operator
+    hash: sha256:0000000000000000000000000000000000000000000000000000000000000005
+    prefix: gg-live-0005
+    created_at: 2026-10-08
+    tags: [admin]
+    allowed_models: ["gg/*"]
+    budget: {monthly_usd: "1.00", daily_usd: "0.50"}

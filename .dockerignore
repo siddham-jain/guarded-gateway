@@ -1,0 +1,9 @@
+# allow-list: only what the image needs reaches the build context, so .env, .models and caches never do
+*
+!pyproject.toml
+!uv.lock
+!README.md
+!src/
+!config/
+**/__pycache__
+**/*.pyc
