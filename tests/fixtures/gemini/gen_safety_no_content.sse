@@ -1,0 +1,4 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"finishReason":"SAFETY","safetyRatings":[{"category":"HARM_CATEGORY_HARASSMENT","probability":"HIGH","blocked":true}]}],"usageMetadata":{"promptTokenCount":9,"totalTokenCount":9},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

@@ -1,0 +1,6 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"**Planning** the answer","thought":true}]}}],"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"42"}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":5,"candidatesTokenCount":1,"thoughtsTokenCount":30,"totalTokenCount":36},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

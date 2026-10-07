@@ -1,0 +1,8 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 402,
+    "message": "Your prepay credit balance is depleted. Add credits to continue.",
+    "status": "RESOURCE_EXHAUSTED"
+  }
+}

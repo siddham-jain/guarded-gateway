@@ -1,0 +1,4 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"finishReason":"MALFORMED_FUNCTION_CALL","finishMessage":"Malformed function call: get_weather("}],"usageMetadata":{"promptTokenCount":10,"totalTokenCount":10},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

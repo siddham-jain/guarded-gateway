@@ -1,0 +1,6 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"Once upon"}]}}],"usageMetadata":{"promptTokenCount":4,"totalTokenCount":4},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":" a time"}]}}],"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

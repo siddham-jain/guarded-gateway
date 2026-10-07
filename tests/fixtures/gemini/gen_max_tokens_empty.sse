@@ -1,0 +1,4 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"finishReason":"MAX_TOKENS"}],"usageMetadata":{"promptTokenCount":10,"thoughtsTokenCount":16,"totalTokenCount":26},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

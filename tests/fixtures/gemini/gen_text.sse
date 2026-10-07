@@ -1,0 +1,8 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"The capital"}]}}],"usageMetadata":{"promptTokenCount":8,"totalTokenCount":8},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":" of France is Paris."}]}}],"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"","thoughtSignature":"c2lnLXRleHQ="}]},"finishReason":"STOP","safetyRatings":[{"category":"HARM_CATEGORY_HARASSMENT","probability":"NEGLIGIBLE"}]}],"usageMetadata":{"promptTokenCount":4100,"cachedContentTokenCount":4096,"candidatesTokenCount":7,"thoughtsTokenCount":40,"totalTokenCount":4147,"serviceTier":"standard"},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

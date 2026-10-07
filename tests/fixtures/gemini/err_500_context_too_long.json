@@ -1,0 +1,8 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 500,
+    "message": "An internal error has occurred: the input context is too long.",
+    "status": "INTERNAL"
+  }
+}

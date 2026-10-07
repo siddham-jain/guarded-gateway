@@ -1,0 +1,8 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 400,
+    "message": "Thinking level MINIMAL is not supported for this model.",
+    "status": "INVALID_ARGUMENT"
+  }
+}

@@ -1,0 +1,8 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 400,
+    "message": "Function call FC1 in the 1. content block is missing a thought_signature.",
+    "status": "INVALID_ARGUMENT"
+  }
+}

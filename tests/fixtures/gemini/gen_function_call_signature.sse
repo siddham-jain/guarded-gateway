@@ -1,0 +1,6 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"Let me check."}]}}],"usageMetadata":{"promptTokenCount":20,"totalTokenCount":20},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"functionCall":{"id":"fc_1","name":"get_weather","args":{"city":"Oslo"}},"thoughtSignature":"c2lnLW9zbG8="}]},"finishReason":"STOP"}],"usageMetadata":{"promptTokenCount":20,"candidatesTokenCount":9,"totalTokenCount":29},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

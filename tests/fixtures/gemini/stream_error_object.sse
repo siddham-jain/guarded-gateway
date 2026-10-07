@@ -1,0 +1,6 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"partial"}]}}],"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"error":{"code":503,"message":"The model is overloaded. Please try again later.","status":"UNAVAILABLE"}}
+

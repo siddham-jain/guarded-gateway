@@ -1,0 +1,4 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"It was the best of times"}]},"finishReason":"RECITATION"}],"usageMetadata":{"promptTokenCount":6,"candidatesTokenCount":6,"totalTokenCount":12},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+

@@ -1,0 +1,6 @@
+: synthetic, hand-written from the documented streamGenerateContent format
+
+data: {"candidates":[{"index":0,"content":{"role":"model","parts":[{"text":"Here is how"}]}}],"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
+data: {"candidates":[{"index":0,"finishReason":"SAFETY"}],"usageMetadata":{"promptTokenCount":9,"candidatesTokenCount":3,"totalTokenCount":12},"modelVersion":"gemini-3.8-flash","responseId":"resp-1"}
+
