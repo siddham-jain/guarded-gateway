@@ -1,0 +1,18 @@
+# virtual keys, sha256 hashes only; the hosted deployment mounts its own file via GG_KEYS_FILE
+# mint a key with `gg keys create --id ID --name NAME` and add the printed entry under `keys:`
+version: 1
+defaults:
+  allowed_models: ["gg/*"]
+  rate_limits: {rpm: 60, tpm: 200000, max_concurrent: 10}
+  budget: {monthly_usd: "5.00", daily_usd: "1.00", soft_limit_pct: 0.8}
+  limits: {max_completion_tokens: 8192, max_n: 1}
+  guardrails: {policy_id: default}
+keys:
+  # local demo key; its gg-test- token is in tests/fixtures/keys/tokens.yaml and is rejected when GG_ENV=prod
+  - id: demo
+    name: Demo app
+    hash: sha256:625f211a1fe6d42d93ad4cc48f06511d32028230f97b02add6ebcfa0d7bd83a5
+    prefix: gg-test-oOCL
+    created_at: 2026-10-05
+    tags: [demo]
+    allowed_models: ["gg/*", "mock/*"]

@@ -1,0 +1,31 @@
+version: 1
+defaults:
+  rate_limits: {rpm: 60}
+  limits: {max_completion_tokens: 4096, max_n: 1}
+keys:
+  - id: demo
+    name: Test demo
+    hash: sha256:625f211a1fe6d42d93ad4cc48f06511d32028230f97b02add6ebcfa0d7bd83a5
+    prefix: gg-test-oOCL
+    created_at: 2026-10-05
+    allowed_models: ["gg/*", "mock/*"]
+  - id: restricted
+    name: Test restricted
+    hash: sha256:ac4a517a9ae0eb42948387dd3b1354d5d23e91498d4eb397fe1f8949166d93d7
+    prefix: gg-test-Oj3R
+    created_at: 2026-10-05
+    allowed_models: ["gg/*"]
+    allowed_providers: [mock]
+    limits: {max_completion_tokens: 100}
+  - id: disabled
+    name: Test disabled
+    hash: sha256:41c5cdc3b5d3fb1a4637cedb2df64d116d396f5bae88c9cdecb913931db06ce7
+    prefix: gg-test-ae2y
+    created_at: 2026-10-05
+    status: disabled
+  - id: expired
+    name: Test expired
+    hash: sha256:f761a52e298d98cb40140e6e556fd0abf4262c126acf31dce026ecdf7df8304c
+    prefix: gg-test-wcov
+    created_at: 2026-10-05
+    expires_at: 2020-01-01T00:00:00Z

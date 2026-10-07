@@ -1,0 +1,7 @@
+# plaintext test-only keys (gg-test- keys are rejected when GG_ENV=prod)
+demo: gg-test-oOCLsRTgaMBYkqdijFnJsqkRclJfoBgTHmNwVpieAkZ0yFNtT
+restricted: gg-test-Oj3RHpP0nxboJnHBUPFwcLp5AvGD0FNmWldaocYYpky0mzVuO
+disabled: gg-test-ae2yhA2TPqqz5LoVAlfHXbuiqKFek45uqczlZ9gWi2r4av4gl
+expired: gg-test-wcovGPrCfnO5hhN512qxGjTQyLL5FVqckM0TfMVHzAK0bKW7L
+loadtest: gg-test-w4sl6HFd6oG85l0FXiiBlkWAiUWB1sU09nJ8K47Li052fthFg
+loadtest-limited: gg-test-vsX4xfKBZOO9fXXJ6ZHKgqAa9xonvgeoR7fMFIiMxf230AVqD

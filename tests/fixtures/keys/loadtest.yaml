@@ -1,0 +1,21 @@
+# load-test key for loadtest/run.py: limits high enough never to trip, remote guards off via the loadtest tag
+version: 1
+keys:
+  - id: loadtest
+    name: Load test
+    hash: sha256:b65c9d8eb17e1de96ddf0df3acda174c16af5c2995b94af11f35c24a8cd7a399
+    prefix: gg-test-w4sl
+    created_at: 2026-10-07
+    tags: [loadtest]
+    allowed_models: ["gg/*", "mock_http/*"]
+    rate_limits: {rpm: 10000000, tpm: 10000000000, max_concurrent: 100000}
+    limits: {max_completion_tokens: 4096, max_n: 1}
+  # burst scenario: limits that a few seconds of load must trip
+  - id: loadtest-limited
+    name: Load test limited
+    hash: sha256:5ef01207c293d24967857c114cbc207a835d471a9fee80af3a39c7212d535032
+    prefix: gg-test-vsX4
+    created_at: 2026-10-07
+    tags: [loadtest]
+    allowed_models: ["gg/*", "mock_http/*"]
+    rate_limits: {rpm: 120, tpm: 10000000, max_concurrent: 10}
