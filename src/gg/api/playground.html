@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>GG playground</title>
+<style>
+  :root { color-scheme: light dark; --muted: #888; --line: #8884; --bad: #c0392b; }
+  * { box-sizing: border-box; }
+  body { font: 14px/1.45 system-ui, sans-serif; max-width: 980px; margin: 24px auto; padding: 0 16px; }
+  h1 { font-size: 20px; margin: 0 0 16px; }
+  label { display: block; font-weight: 600; margin: 12px 0 4px; }
+  input, select, textarea, button { font: inherit; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; }
+  input, select, textarea { width: 100%; background: transparent; color: inherit; }
+  textarea { min-height: 80px; resize: vertical; }
+  .row { display: flex; gap: 8px; align-items: end; }
+  .row > * { flex: 1; }
+  .row > button { flex: 0 0 auto; }
+  button { cursor: pointer; }
+  button:disabled { opacity: .5; cursor: default; }
+  #output { white-space: pre-wrap; min-height: 120px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; margin-top: 12px; }
+  #error { color: var(--bad); white-space: pre-wrap; margin-top: 8px; }
+  table { border-collapse: collapse; width: 100%; margin-top: 12px; font-family: ui-monospace, monospace; font-size: 12px; }
+  td { border-bottom: 1px solid var(--line); padding: 4px 6px; vertical-align: top; word-break: break-all; }
+  td:first-child { color: var(--muted); width: 220px; }
+  .hint { color: var(--muted); font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>GG playground</h1>
+<p class="hint">Streams a chat through <code>/v1/chat/completions</code>. The key stays in this page's memory only.</p>
+
+<div class="row">
+  <div><label for="key">GG key</label><input id="key" type="password" autocomplete="off" placeholder="gg-live-..."></div>
+  <button id="load">Load models</button>
+</div>
+
+<label for="model">Model or alias</label>
+<select id="model"><option value="gg/auto">gg/auto</option></select>
+
+<label for="system">System prompt (optional)</label>
+<textarea id="system" rows="2"></textarea>
+
+<label for="prompt">Message</label>
+<textarea id="prompt">Say hello in five words.</textarea>
+
+<div class="row" style="margin-top:12px">
+  <button id="send">Send</button>
+  <button id="stop" disabled>Stop</button>
+  <span class="hint" id="status"></span>
+</div>
+
+<div id="error"></div>
+<div id="output"></div>
+<table><tbody id="headers"></tbody></table>
+
+<script>
+"use strict";
+const SHOWN = ["x-gg-route", "x-gg-route-reason", "x-gg-provider", "x-gg-model", "x-gg-cache",
+  "x-gg-fallback", "x-gg-attempts", "x-gg-ignored-params", "x-gg-trace-id", "x-request-id", "server-timing"];
+const $ = (id) => document.getElementById(id);
+let controller = null;
+
+function auth() {
+  return { "authorization": "Bearer " + $("key").value.trim() };
+}
+
+function showError(err) {
+  const e = err && err.error ? err.error : err;
+  $("error").textContent = typeof e === "string" ? e : [e.code, e.message].filter(Boolean).join(": ");
+}
+
+function showHeaders(headers) {
+  const body = $("headers");
+  body.replaceChildren();
+  for (const name of SHOWN) {
+    const value = headers.get(name);
+    if (value === null) continue;
+    const tr = document.createElement("tr");
+    for (const text of [name, value]) {
+      const td = document.createElement("td");
+      td.textContent = text;
+      tr.append(td);
+    }
+    body.append(tr);
+  }
+}
+
+async function loadModels() {
+  $("error").textContent = "";
+  const res = await fetch("/v1/models", { headers: auth() });
+  const body = await res.json();
+  if (!res.ok) return showError(body);
+  const select = $("model");
+  const current = select.value;
+  select.replaceChildren();
+  for (const m of body.data) {
+    const opt = document.createElement("option");
+    opt.value = opt.textContent = m.id;
+    select.append(opt);
+  }
+  if ([...select.options].some((o) => o.value === current)) select.value = current;
+}
+
+function handleEvent(data, usage) {
+  if (data === "[DONE]") return;
+  const msg = JSON.parse(data);
+  if (msg.error) return showError(msg);
+  for (const choice of msg.choices || []) {
+    const delta = choice.delta || {};
+    if (delta.content) $("output").textContent += delta.content;
+    if (delta.refusal) $("output").textContent += delta.refusal;
+    for (const call of delta.tool_calls || []) {
+      $("output").textContent += call.function && call.function.name ? `\n[tool ${call.function.name}] ` : "";
+      $("output").textContent += (call.function && call.function.arguments) || "";
+    }
+    if (choice.finish_reason) $("status").textContent = "finish: " + choice.finish_reason;
+  }
+  if (msg.usage) usage.value = msg.usage;
+}
+
+async function send() {
+  $("error").textContent = "";
+  $("output").textContent = "";
+  $("headers").replaceChildren();
+  $("status").textContent = "sending...";
+  const messages = [];
+  if ($("system").value.trim()) messages.push({ role: "system", content: $("system").value });
+  messages.push({ role: "user", content: $("prompt").value });
+  controller = new AbortController();
+  $("send").disabled = true;
+  $("stop").disabled = false;
+  const started = performance.now();
+  const usage = { value: null };
+  try {
+    const res = await fetch("/v1/chat/completions", {
+      method: "POST",
+      headers: { ...auth(), "content-type": "application/json" },
+      body: JSON.stringify({ model: $("model").value, messages, stream: true, stream_options: { include_usage: true } }),
+      signal: controller.signal,
+    });
+    showHeaders(res.headers);
+    if (!res.ok) {
+      showError(await res.json().catch(() => res.statusText));
+      $("status").textContent = "HTTP " + res.status;
+      return;
+    }
+    const reader = res.body.pipeThrough(new TextDecoderStream()).getReader();
+    let buffer = "";
+    for (;;) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += value;
+      let cut;
+      while ((cut = buffer.indexOf("\n\n")) >= 0) {
+        const frame = buffer.slice(0, cut);
+        buffer = buffer.slice(cut + 2);
+        for (const line of frame.split("\n")) {
+          if (line.startsWith("data: ")) handleEvent(line.slice(6), usage);
+        }
+      }
+    }
+    const ms = Math.round(performance.now() - started);
+    const u = usage.value;
+    $("status").textContent += ` | ${ms} ms` + (u ? ` | ${u.prompt_tokens} in / ${u.completion_tokens} out` : "");
+  } catch (err) {
+    if (err.name !== "AbortError") showError(String(err));
+    else $("status").textContent = "stopped";
+  } finally {
+    $("send").disabled = false;
+    $("stop").disabled = true;
+    controller = null;
+  }
+}
+
+$("load").addEventListener("click", () => loadModels().catch((err) => showError(String(err))));
+$("send").addEventListener("click", send);
+$("stop").addEventListener("click", () => controller && controller.abort());
+</script>
+</body>
+</html>
