@@ -1,0 +1,10 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"chatcmpl-o2","object":"chat.completion.chunk","created":1790000000,"model":"llama3.2:1b","choices":[{"index":0,"delta":{"role":"assistant","content":"","tool_calls":[{"function":{"name":"get_weather","arguments":{"city":"Paris"}}}]},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-o2","object":"chat.completion.chunk","created":1790000000,"model":"llama3.2:1b","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+data: {"id":"chatcmpl-o2","object":"chat.completion.chunk","created":1790000000,"model":"llama3.2:1b","choices":[],"usage":{"prompt_tokens":8,"completion_tokens":9,"total_tokens":17}}
+
+data: [DONE]
+

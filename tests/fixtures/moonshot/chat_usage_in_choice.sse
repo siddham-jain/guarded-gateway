@@ -1,0 +1,8 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"km-1","object":"chat.completion.chunk","created":1790000000,"model":"kimi-k3","choices":[{"index":0,"delta":{"role":"assistant","content":"Hi"},"finish_reason":null}]}
+
+data: {"id":"km-1","object":"chat.completion.chunk","created":1790000000,"model":"kimi-k3","choices":[{"index":0,"delta":{},"finish_reason":"stop","usage":{"prompt_tokens":11,"completion_tokens":1,"total_tokens":12,"cached_tokens":8}}]}
+
+data: [DONE]
+

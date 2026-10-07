@@ -1,0 +1,7 @@
+{
+  "_synthetic": true,
+  "error": {
+    "message": "flex tier capacity exceeded",
+    "type": "capacity_exceeded"
+  }
+}

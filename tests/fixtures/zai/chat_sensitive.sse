@@ -1,0 +1,8 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"zai-1","object":"chat.completion.chunk","created":1790000000,"model":"glm-5.3-flash","choices":[{"index":0,"delta":{"role":"assistant","content":"Some"},"finish_reason":null}]}
+
+data: {"id":"zai-1","object":"chat.completion.chunk","created":1790000000,"model":"glm-5.3-flash","choices":[{"index":0,"delta":{},"finish_reason":"sensitive"}],"usage":{"prompt_tokens":5,"completion_tokens":1,"total_tokens":6}}
+
+data: [DONE]
+

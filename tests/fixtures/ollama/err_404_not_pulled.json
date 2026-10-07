@@ -1,0 +1,7 @@
+{
+  "_synthetic": true,
+  "error": {
+    "message": "model \"llama3.2:1b\" not found, try pulling it first",
+    "type": "api_error"
+  }
+}

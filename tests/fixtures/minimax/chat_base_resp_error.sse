@@ -1,0 +1,4 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"mx-1","choices":[],"base_resp":{"status_code":1008,"status_msg":"insufficient balance"}}
+

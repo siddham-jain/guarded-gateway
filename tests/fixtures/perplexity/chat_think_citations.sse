@@ -1,0 +1,10 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"px-1","object":"chat.completion.chunk","created":1790000000,"model":"sonar-reasoning-pro","choices":[{"index":0,"delta":{"role":"assistant","content":"<thi"},"finish_reason":null}]}
+
+data: {"id":"px-1","object":"chat.completion.chunk","created":1790000000,"model":"sonar-reasoning-pro","choices":[{"index":0,"delta":{"content":"nk>searching</think>Paris"},"finish_reason":null}]}
+
+data: {"id":"px-1","object":"chat.completion.chunk","created":1790000000,"model":"sonar-reasoning-pro","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"citations":["https://example.com/a"],"usage":{"prompt_tokens":4,"completion_tokens":3,"total_tokens":7,"cost":{"total_cost":0.006}}}
+
+data: [DONE]
+

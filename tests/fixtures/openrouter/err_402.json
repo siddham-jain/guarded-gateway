@@ -1,0 +1,8 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 402,
+    "message": "Insufficient credits",
+    "metadata": {}
+  }
+}

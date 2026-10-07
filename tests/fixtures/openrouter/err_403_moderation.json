@@ -1,0 +1,15 @@
+{
+  "_synthetic": true,
+  "error": {
+    "code": 403,
+    "message": "Input was flagged",
+    "metadata": {
+      "reasons": [
+        "violence"
+      ],
+      "flagged_input": "...",
+      "provider_name": "x",
+      "model_slug": "y"
+    }
+  }
+}

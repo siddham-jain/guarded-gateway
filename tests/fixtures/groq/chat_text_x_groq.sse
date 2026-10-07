@@ -1,0 +1,12 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"chatcmpl-g","object":"chat.completion.chunk","created":1790000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}],"x_groq":{"id":"req_01"}}
+
+data: {"id":"chatcmpl-g","object":"chat.completion.chunk","created":1790000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"delta":{"reasoning":"thinking briefly"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-g","object":"chat.completion.chunk","created":1790000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"delta":{"content":"OK"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-g","object":"chat.completion.chunk","created":1790000000,"model":"openai/gpt-oss-120b","choices":[{"index":0,"delta":{},"finish_reason":"stop"}],"x_groq":{"id":"req_01","usage":{"prompt_tokens":12,"completion_tokens":7,"total_tokens":19,"completion_tokens_details":{"reasoning_tokens":5}}}}
+
+data: [DONE]
+

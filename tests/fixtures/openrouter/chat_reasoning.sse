@@ -1,0 +1,14 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+: OPENROUTER PROCESSING
+
+data: {"id":"gen-1","object":"chat.completion.chunk","created":1790000000,"model":"qwen/qwen3-235b-a22b-2507","choices":[{"index":0,"delta":{"role":"assistant","content":"","reasoning":"plan"},"finish_reason":null}],"provider":"DeepInfra"}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","created":1790000000,"model":"qwen/qwen3-235b-a22b-2507","choices":[{"index":0,"delta":{"content":"Done"},"finish_reason":null}],"provider":"DeepInfra"}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","created":1790000000,"model":"qwen/qwen3-235b-a22b-2507","choices":[{"index":0,"delta":{},"finish_reason":"stop","native_finish_reason":"end_turn"}],"provider":"DeepInfra"}
+
+data: {"id":"gen-1","object":"chat.completion.chunk","created":1790000000,"model":"qwen/qwen3-235b-a22b-2507","choices":[],"provider":"DeepInfra","usage":{"prompt_tokens":10,"completion_tokens":3,"total_tokens":13,"cost":1e-05,"prompt_tokens_details":{"cached_tokens":0}}}
+
+data: [DONE]
+

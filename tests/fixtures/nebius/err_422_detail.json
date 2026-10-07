@@ -1,0 +1,13 @@
+{
+  "_synthetic": true,
+  "detail": [
+    {
+      "loc": [
+        "body",
+        "foo"
+      ],
+      "msg": "extra fields not permitted",
+      "type": "value_error.extra"
+    }
+  ]
+}

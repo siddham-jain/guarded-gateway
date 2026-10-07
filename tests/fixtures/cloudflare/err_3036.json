@@ -1,0 +1,11 @@
+{
+  "_synthetic": true,
+  "result": null,
+  "success": false,
+  "errors": [
+    {
+      "code": 3036,
+      "message": "daily free allocation used"
+    }
+  ]
+}

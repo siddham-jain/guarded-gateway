@@ -1,0 +1,6 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"chatcmpl-3","object":"chat.completion.chunk","created":1790000000,"model":"gpt-6-luna","choices":[{"index":0,"delta":{"role":"assistant","content":"Hel"},"finish_reason":null}]}
+
+data: {"error":{"message":"The server had an error","type":"server_error","param":null,"code":null}}
+

@@ -1,0 +1,10 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"ds-1","object":"chat.completion.chunk","created":1790000000,"model":"deepseek-flash","choices":[{"index":0,"delta":{"role":"assistant","content":null,"reasoning_content":"Need the weather tool."},"finish_reason":null}]}
+
+data: {"id":"ds-1","object":"chat.completion.chunk","created":1790000000,"model":"deepseek-flash","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_ds1","type":"function","function":{"name":"get_weather","arguments":"{\"city\":\"Paris\"}"}}]},"finish_reason":null}]}
+
+data: {"id":"ds-1","object":"chat.completion.chunk","created":1790000000,"model":"deepseek-flash","choices":[{"index":0,"delta":{},"finish_reason":"tool_calls"}],"usage":{"prompt_tokens":50,"completion_tokens":20,"total_tokens":70,"prompt_cache_hit_tokens":32,"prompt_cache_miss_tokens":18,"completion_tokens_details":{"reasoning_tokens":8}}}
+
+data: [DONE]
+

@@ -1,0 +1,9 @@
+{
+  "_synthetic": true,
+  "error": {
+    "message": "You exceeded your current quota",
+    "type": "insufficient_quota",
+    "param": null,
+    "code": "insufficient_quota"
+  }
+}

@@ -1,0 +1,4 @@
+: synthetic, hand-written from documented shapes (plans/research)
+
+data: {"id":"chatcmpl-4","object":"chat.completion.chunk","created":1790000000,"model":"gpt-6-luna","choices":[{"index":0,"delta":{"role":"assistant","content":"partial answer"},"finish_reason":null}]}
+

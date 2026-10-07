@@ -1,0 +1,9 @@
+{
+  "_synthetic": true,
+  "error": {
+    "message": "Unsupported parameter: 'temperature'",
+    "type": "invalid_request_error",
+    "param": "temperature",
+    "code": "unsupported_parameter"
+  }
+}
