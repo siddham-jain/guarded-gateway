@@ -1,0 +1,28 @@
+# routing eval suite (c5 §10, c11 §3.8): frozen model pairs; changing a pair's model or params changes the
+# cache keys, so a rerun regenerates instead of mixing old and new answers.
+version: 1
+suite_version: 1.0.0
+items: items/prompts.jsonl
+judge_prompt: judge/pairwise_v1.md
+
+pairs:
+  ci:                                   # --dry-run: in-process mock provider, fake scorer, no network
+    profile: ci
+    description: mock/echo with per-request scenarios standing in for both models and the judge
+    weak: {model: mock/echo}
+    strong: {model: mock/echo}
+    judge: {model: mock/echo, max_tokens: 200}
+
+  dev-free:                             # free tiers; list prices are still used for the cost curve
+    profile: dev-free
+    description: gemini flash-lite vs gemini 3.8 flash, judged by gpt-oss-120b on groq (different family)
+    weak: {model: gemini/gemini-3.1-flash-lite, params: {reasoning_effort: minimal, temperature: 0}}
+    strong: {model: gemini/gemini-3.8-flash, params: {reasoning_effort: low}, extra_tokens: 1024}
+    judge: {model: groq/openai/gpt-oss-120b, params: {reasoning_effort: low, temperature: 0}, max_tokens: 1024}
+
+  openrouter:                           # needs the openrouter deployments listed in evals/routing/README.md
+    profile: prod
+    description: master-plan pair (gpt-6-luna vs gpt-6.1-sol) via openrouter, judged by claude haiku 4.5
+    weak: {model: openrouter/openai/gpt-6-luna, params: {reasoning_effort: none, temperature: 0}}
+    strong: {model: openrouter/openai/gpt-6.1-sol, params: {reasoning_effort: low}, extra_tokens: 1024}
+    judge: {model: openrouter/anthropic/claude-haiku-4.5, params: {temperature: 0}, max_tokens: 300}
