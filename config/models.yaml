@@ -1,0 +1,815 @@
+# GG model catalog (owner: C3). Prices are USD per 1M tokens and must be re-verified before use.
+# Sources: plans/research/provider-*.md (2026-10-05). UNVERIFIED marks quirks not confirmed by docs or a live call.
+#
+# A provider is enabled only when its credentials are in Settings:
+#   GG_PROVIDERS__<NAME>__API_KEY (and GG_PROVIDERS__<NAME>__BASE_URL to override base_url).
+# Providers with requires_key: false (ollama, mock) need only a base url (ollama) or nothing (mock).
+#
+# Coding-plan / subscription keys (Z.ai GLM Coding Plan, Alibaba Coding Plan, MiniMax Coding Plan) are
+#   configured as their own providers (zai_coding, qwen_coding, minimax_coding) for this capstone. Their terms
+#   restrict use to interactive coding tools and forbid proxying, so the account owner accepts the risk of
+#   suspension. They are flat-fee (billing: subscription) and quota-limited per 5-hour window, so 429s map to
+#   quota errors and the executor falls back. The pay-as-you-go providers still refuse coding-plan base urls.
+
+version: 1
+
+# shared quirk profiles; providers pick one with `quirks: {extends: <name>, ...}` (deep merge, child wins)
+quirk_profiles:
+  openai_compatible: {}                      # code defaults: max_tokens, include_usage injected, reasoning_content
+  reasoning_field_reasoning:
+    reasoning: {field: reasoning}
+  zai:                                      # shared by the pay-as-you-go and coding-plan providers
+    request:
+      drop: [n, seed, logprobs, top_logprobs, frequency_penalty, presence_penalty, parallel_tool_calls]
+      clamp: {temperature: [0, 1]}
+      stop_max: 1
+      tool_choice: {supported: [auto]}
+      response_format: {json_schema: as_json_object}
+      stream_usage: automatic
+      user_field: user_id
+    reasoning:
+      history: required                    # interleaved thinking should be returned with tool results
+    response:
+      finish_reason_map: {sensitive: content_filter, model_context_window_exceeded: length}
+      finish_reason_errors: [error, network_error]
+    errors:
+      code_map:
+        "1113": {kind: auth, code: billing}
+        "1211": {kind: fallback, code: model_not_found}
+        "1261": {kind: fallback, code: context_length}
+        "1301": {kind: content_filter, code: content_filter}
+        "1302": {kind: quota_minute, code: rate_limited}
+        "1305": {kind: retryable, code: overloaded}
+  qwen:                                      # shared by the pay-as-you-go and coding-plan providers
+    request:
+      max_tokens_param: max_completion_tokens
+      tool_choice: {supported: [auto, none]}    # qwen rejects required; thinking mode cannot force a named tool
+      defaults: {parallel_tool_calls: true}     # defaults to false upstream
+    reasoning:
+      effort_map: {none: {enable_thinking: false}, minimal: low, high: xhigh, max: xhigh}
+      history: required                    # preserve_thinking: quality degrades without it, no error
+    errors:
+      code_map:
+        DataInspectionFailed: {kind: content_filter, code: content_filter}
+        data_inspection_failed: {kind: content_filter, code: content_filter}
+        Arrearage: {kind: auth, code: billing}
+        AllocationQuota.FreeTierOnly: {kind: auth, code: billing}
+        InvalidApiKey: {kind: auth, code: auth}
+        Throttling.RateQuota: {kind: quota_minute, code: rate_limited}
+        Throttling.BurstRate: {kind: quota_minute, code: rate_limited}
+        Throttling.AllocationQuota: {kind: quota_minute, code: rate_limited}
+  minimax:                                      # shared by the pay-as-you-go and coding-plan providers
+    request:
+      max_tokens_param: max_completion_tokens
+      drop: [stop, seed, parallel_tool_calls, logprobs, top_logprobs]   # absent from the openai-endpoint schema, UNVERIFIED
+      extra_body: {reasoning_split: true}
+    reasoning: {history: required}
+    response:
+      check_body_status: {path: base_resp.status_code, ok: 0, message_path: base_resp.status_msg}
+    errors:
+      code_map:
+        "1002": {kind: quota_minute, code: rate_limited}
+        "1004": {kind: auth, code: auth}
+        "1008": {kind: auth, code: billing}
+        "1026": {kind: content_filter, code: content_filter}
+        "1027": {kind: content_filter, code: content_filter}
+        "1039": {kind: fallback, code: context_length}
+        "2013": {kind: client, code: invalid_request}
+        "2049": {kind: auth, code: auth}
+
+capability_profiles:
+  openai_reasoning: &openai_reasoning
+    tools: true
+    tools_require_effort: none               # gpt-6 sol/luna: chat-completions tools only with effort none
+    forced_tool_choice: true
+    parallel_tool_calls: true
+    prefill: false
+    sampling_params: when_effort_none
+    effort_levels: [none, minimal, low, medium, high, xhigh, max]
+    thinking_mode: effort
+    json_schema: true
+    json_object: true
+    vision: true
+    pdf: true
+    logprobs: true
+    n: true
+    stop_max: 4
+    max_output: 128000
+    context: 1050000
+    cache_min_tokens: 1024
+  claude_5_5: &claude_5_5
+    tools: true
+    forced_tool_choice: false
+    prefill: false
+    sampling_params: none
+    temperature_max: 1.0
+    effort_levels: [low, medium, high, xhigh, max]
+    effort_clamp: {none: low, minimal: low}
+    thinking_mode: adaptive
+    json_schema: true
+    json_object: true
+    vision: true
+    pdf: true
+    max_output: 128000
+    context: 1000000
+    min_max_tokens: 1024
+    cache_min_tokens: 512
+  gemini_3: &gemini_3
+    tools: true
+    forced_tool_choice: true
+    parallel_tool_calls: false
+    prefill: false                           # UNVERIFIED, S1
+    sampling_params: advisory
+    thinking_mode: levels
+    json_schema: true
+    json_schema_strict: false
+    json_object: true
+    vision: true
+    image_url: gateway_fetch
+    pdf: true
+    logprobs: true
+    stop_max: 5
+    mid_conversation_system: false
+    max_output: 65536
+    context: 1048576
+    cache_min_tokens: 4096
+    honors_cancellation: false               # google bills after cancel
+  open_chat: &open_chat                      # typical open-weight chat model on an openai-compatible host
+    tools: true
+    forced_tool_choice: true
+    parallel_tool_calls: false
+    prefill: false
+    sampling_params: full
+    json_schema: true
+    json_schema_strict: false
+    json_object: true
+    vision: false
+    stop_max: 4
+    max_output: 16384
+    context: 131072
+  gpt_oss: &gpt_oss                          # openai/gpt-oss-120b|20b: reasoning model, low effort keeps cost down
+    <<: *open_chat
+    effort_levels: [low, medium, high]
+    effort_clamp: {none: low, minimal: low, xhigh: high, max: high}
+    thinking_mode: effort
+    max_output: 32768
+
+providers:
+  # --- first-party openai: the most faithful profile (near passthrough)
+  openai:
+    type: openai_compat
+    base_url: https://api.openai.com/v1
+    quirks:
+      client_request_id_header: X-Client-Request-Id
+      request:
+        max_tokens_param: max_completion_tokens
+        passthrough_unknown: true            # new openai params reach openai untouched; other hosts drop them
+        user_field: safety_identifier
+        store_false: true
+        prompt_cache_key: true
+        stream_options_extra: {include_obfuscation: false}
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", retention_days: 30, zdr: on_request}
+
+  # --- native adapters
+  anthropic:
+    type: anthropic
+    base_url: https://api.anthropic.com
+    auth: {header: x-api-key, scheme: null}
+    quirks: {api_version: "2023-06-01", cache: {enabled: true, min_static_tokens: 2048}}
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", retention_days: 30, zdr: on_request}
+  gemini:                                    # native generateContent; the adapter sends the key as x-goog-api-key
+    type: gemini
+    base_url: https://generativelanguage.googleapis.com/v1beta
+    billing: free_tier
+    quirks: {emit_thought_signatures: true, structured_output: response_format}   # response_format UNVERIFIED, S1
+    data_policy: {jurisdiction: US, trains_on_api_data: unknown}
+
+  # --- local
+  ollama:
+    type: openai_compat
+    base_path: /v1                           # GG_PROVIDERS__OLLAMA__BASE_URL=http://localhost:11434
+    requires_key: false
+    max_in_flight: 2                         # cpu ollama serves ~1 request at a time; fail fast instead of queueing
+    quirks:
+      extends: reasoning_field_reasoning
+      request:
+        role_map: {developer: system}        # developer role support UNVERIFIED
+        tool_choice: {supported: []}         # compat endpoint ignores tool_choice; none drops tools
+        parallel_tool_calls: false
+        drop: [logit_bias, n]
+        defaults: {temperature: 0.6}         # compat layer forces 1.0 when omitted
+        extra_body: {keep_alive: "-1"}
+      errors:
+        transport_kind: fallback
+        status_map:
+          404: {kind: fallback, code: model_not_found}
+          503: {kind: fallback, code: queue_full}
+    data_policy: {jurisdiction: local, trains_on_api_data: "false", retention_days: 0, zdr: default}
+
+  mock:
+    type: mock
+    requires_key: false
+    billing: free_tier                       # never costs money, so the spend guard must not cap it
+  mock_http:                                 # mock_upstream/app.py; GG_PROVIDERS__MOCK_HTTP__BASE_URL=http://localhost:9000/v1
+    type: openai_compat
+    requires_key: false
+    billing: free_tier
+    quirks: {extends: openai_compatible}
+
+  # --- open-model hosts and aggregators (provider-open-model-hosts.md §21.7)
+  together:
+    type: openai_compat
+    base_url: https://api.together.ai/v1
+    quirks:
+      request:
+        stream_usage: automatic              # no stream_options param; usage rides on chunks (final-chunk UNVERIFIED)
+        parallel_tool_calls: false           # parallel calls happen, but there is no control param
+      response:
+        finish_reason_map: {eos: stop}
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", zdr: account_toggle}
+  fireworks:
+    type: openai_compat
+    base_url: https://api.fireworks.ai/inference/v1
+    quirks:
+      request:
+        model_prefix: accounts/fireworks/models/
+      errors:
+        status_map:
+          412: {kind: auth, code: billing}   # account suspended
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", zdr: default}
+  deepinfra:
+    type: openai_compat
+    base_url: https://api.deepinfra.com/v1/openai
+    quirks:
+      request:
+        strict_tools: false                  # no `strict` on functions
+        parallel_tool_calls: false
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", zdr: default}
+  groq:
+    type: openai_compat
+    base_url: https://api.groq.com/openai/v1
+    billing: free_tier
+    quirks:
+      extends: reasoning_field_reasoning
+      request:
+        max_tokens_param: max_completion_tokens
+        drop: [logprobs, top_logprobs, logit_bias, frequency_penalty, presence_penalty, store, metadata]
+        strip_message_fields: [reasoning_content, reasoning, extra_content, name]
+      # x-ratelimit-*-requests is the per-day limit on groq, tokens are per minute
+    data_policy: {jurisdiction: US, retention_days: 30, zdr: self_serve}
+  cerebras:
+    type: openai_compat
+    base_url: https://api.cerebras.ai/v1
+    quirks:
+      extends: reasoning_field_reasoning
+      request:
+        max_tokens_param: max_completion_tokens   # pre-charged against rate limits; keep it tight
+    data_policy: {jurisdiction: US}
+  openrouter:
+    type: openai_compat
+    base_url: https://openrouter.ai/api/v1
+    quirks:
+      extends: reasoning_field_reasoning
+      extra_headers: {X-OpenRouter-Title: GG}
+      request:
+        stream_usage: automatic              # usage always included; include_usage is a deprecated no-op
+        extra_body:
+          provider: {data_collection: deny, require_parameters: true}
+      reasoning: {param: reasoning.effort}
+      errors:
+        status_map:
+          403: {kind: content_filter, code: content_filter}   # moderation
+          503: {kind: fallback, code: no_provider}             # no host meets the routing requirements
+    # terms §7: own-team use only; never resell capacity or republish its catalog
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", zdr: self_serve}
+  huggingface:
+    type: openai_compat
+    base_url: https://router.huggingface.co/v1   # pin hosts with `<model>:<provider>`; default :fastest hides the host
+    quirks:
+      request: {}                            # reasoning field is passthrough from the host, UNVERIFIED
+    data_policy: {jurisdiction: US, retention_days: 30}
+  cloudflare:
+    type: openai_compat
+    # GG_PROVIDERS__CLOUDFLARE__BASE_URL=https://api.cloudflare.com/client/v4/accounts/<account_id>/ai/v1
+    quirks:
+      errors:
+        code_map:
+          "3036": {kind: quota_day, code: per_day}            # daily free allocation used
+          "3040": {kind: retryable, code: overloaded}
+          "5007": {kind: fallback, code: model_not_found}
+          "3007": {kind: retryable, code: timeout}
+    billing: free_tier
+    data_policy: {jurisdiction: US, trains_on_api_data: "false"}
+  sambanova:                                 # config-only, best effort
+    type: openai_compat
+    base_url: https://api.sambanova.ai/v1
+    quirks:
+      extends: reasoning_field_reasoning
+      request: {drop: [logit_bias]}
+      errors:
+        code_map:
+          queue_full: {kind: retryable, code: overloaded}
+          model_deprecated: {kind: fallback, code: model_not_found}
+          maintenance: {kind: retryable, code: overloaded}
+  nebius:                                    # config-only; errors are {"detail": ...}
+    type: openai_compat
+    base_url: https://api.tokenfactory.nebius.com/v1
+    quirks:
+      request: {parallel_tool_calls: false}
+  novita:                                    # config-only; reasoning is merged into content unless separate_reasoning
+    type: openai_compat
+    base_url: https://api.novita.ai/openai/v1
+    quirks:
+      request:
+        extra_body: {separate_reasoning: true}
+      errors:
+        code_map:
+          INVALID_API_KEY: {kind: auth, code: auth}
+          NOT_ENOUGH_BALANCE: {kind: auth, code: billing}
+          RATE_LIMIT_EXCEEDED: {kind: quota_minute, code: rate_limited}
+  baseten:                                   # config-only
+    type: openai_compat
+    base_url: https://inference.baseten.co/v1
+
+  # --- model labs' first-party apis (provider-model-labs.md §5)
+  mistral:
+    type: openai_compat
+    base_url: https://api.mistral.ai/v1
+    quirks:
+      request:
+        role_map: {developer: system}
+        renames: {seed: random_seed}
+        allow_only: [model, messages, temperature, top_p, max_tokens, stream, stop, random_seed, response_format,
+                     tools, tool_choice, presence_penalty, frequency_penalty, n, prediction, parallel_tool_calls,
+                     reasoning_effort, prompt_mode, prompt_cache_key, metadata]
+        clamp: {temperature: [0, 1.5]}
+        stream_usage: unsupported            # usage arrives on the finish chunk; stream_options 422s
+        tool_call_id_format: alnum9          # 9-char alphanumeric tool ids, UNVERIFIED for current models
+      reasoning: {field: content_array}
+      response:
+        finish_reason_map: {model_length: length}
+    data_policy: {jurisdiction: EU, processing_regions: [eu, us], trains_on_api_data: "false", zdr: on_request,
+                  resale_allowed: with_authorization}
+  qwen:                                      # alibaba model studio, international (singapore)
+    type: openai_compat
+    base_url: https://dashscope-intl.aliyuncs.com/compatible-mode/v1
+    quirks:
+      extends: qwen
+    data_policy: {jurisdiction: SG, trains_on_api_data: "false"}
+  zai:                                       # pay-as-you-go only
+    type: openai_compat
+    base_url: https://api.z.ai/api/paas/v4
+    quirks:
+      forbid_base_url_patterns: [/coding/]
+      extends: zai
+    data_policy: {jurisdiction: SG, trains_on_api_data: "false", retention_days: 0}
+  moonshot:
+    type: openai_compat
+    base_url: https://api.moonshot.ai/v1
+    quirks:
+      request:
+        max_tokens_param: max_completion_tokens
+        drop: [temperature, top_p, n, frequency_penalty, presence_penalty]   # fixed per model; any value 400s
+        stop_max: 5
+        user_field: safety_identifier
+        prompt_cache_key: true
+      reasoning: {history: required}         # k3 always uses preserved thinking
+      errors:
+        code_map:
+          exceeded_current_quota_error: {kind: auth, code: billing}
+          engine_overloaded_error: {kind: retryable, code: overloaded}
+          rate_limit_reached_error: {kind: quota_minute, code: rate_limited}
+          content_filter: {kind: content_filter, code: content_filter}
+    data_policy: {jurisdiction: SG, trains_on_api_data: "true", zdr: on_request, resale_allowed: with_authorization}
+  deepseek:
+    type: openai_compat
+    base_url: https://api.deepseek.com
+    quirks:
+      request:
+        drop: [n, seed, parallel_tool_calls, frequency_penalty, presence_penalty, logit_bias]
+        response_format: {json_schema: as_json_object}
+        user_field: user_id                  # also isolates kv cache per key
+      reasoning:
+        effort_map: {none: {thinking: {type: disabled}}, minimal: low, medium: high, xhigh: max}
+        history: required_with_tools         # 400 when tools are present and earlier reasoning_content is missing
+      response:
+        finish_reason_errors: [error, insufficient_system_resource, aborted]
+    data_policy: {jurisdiction: CN, trains_on_api_data: opt_out}
+  xai:
+    type: openai_compat
+    base_url: https://api.x.ai/v1
+    quirks:
+      request:
+        max_tokens_param: max_completion_tokens
+        user_field: safety_identifier        # xai asks gateways to send a per-end-user id
+        prompt_cache_key: true
+        drop: [logit_bias]
+      response:
+        cost_path: usage.cost_in_usd_ticks
+        cost_scale: 1.0e-10
+    data_policy: {jurisdiction: US, trains_on_api_data: "false", retention_days: 30, zdr: self_serve}
+  minimax:                                   # pay-as-you-go api key only, never the subscription key
+    type: openai_compat
+    base_url: https://api.minimax.io/v1
+    quirks:
+      extends: minimax
+    data_policy: {jurisdiction: SG, processing_regions: [us], trains_on_api_data: "true", resale_allowed: "no"}
+  zai_coding:                                # glm coding plan key; GG_PROVIDERS__ZAI_CODING__API_KEY
+    type: openai_compat
+    base_url: https://api.z.ai/api/coding/paas/v4
+    billing: subscription
+    quirks: {extends: zai}
+    data_policy: {jurisdiction: SG, trains_on_api_data: "false", resale_allowed: "no"}
+  qwen_coding:                               # alibaba model studio coding plan key (sk-sp-...)
+    type: openai_compat
+    base_url: https://coding-intl.dashscope.aliyuncs.com/v1
+    billing: subscription
+    quirks: {extends: qwen}
+    data_policy: {jurisdiction: SG, trains_on_api_data: "false", resale_allowed: "no"}
+  minimax_coding:                            # minimax coding plan key; same endpoint as pay-as-you-go
+    type: openai_compat
+    base_url: https://api.minimax.io/v1
+    billing: subscription
+    quirks: {extends: minimax}
+    data_policy: {jurisdiction: SG, processing_regions: [us], trains_on_api_data: "true", resale_allowed: "no"}
+  cohere:                                    # compatibility api, config-only until a live probe
+    type: openai_compat
+    base_url: https://api.cohere.ai/compatibility/v1
+    quirks:
+      request:
+        drop: [n, logit_bias, top_logprobs, parallel_tool_calls, store, metadata]
+      errors:
+        status_map:
+          498: {kind: auth, code: auth}      # invalid token on cohere (flex capacity on groq)
+          499: {kind: client, code: cancelled}
+    data_policy: {retention_days: 30, trains_on_api_data: opt_out, resale_allowed: "no"}
+  perplexity:                                # search tool, never in router tiers; sonar chat completions is legacy
+    type: openai_compat
+    base_url: https://api.perplexity.ai
+    quirks:
+      reasoning: {field: think_tags}
+      response:
+        passthrough_fields: [citations, search_results, images, related_questions]
+        cost_path: usage.cost.total_cost
+    data_policy: {trains_on_api_data: "false", zdr: default}
+
+# c4 owns this block (timeouts, retries, breakers); c3 only reads timeouts and deadlines into Deployment.timeouts
+reliability:
+  defaults:
+    timeouts: {connect_s: 3, inter_chunk_s: 20, ttft_s: 10}
+    deadline_s: {non_stream: 30, stream: 120}
+  providers:
+    ollama:
+      timeouts: {connect_s: 1, ttft_s: 15}
+      deadline_s: {non_stream: 60, stream: 60}
+
+deployments:
+  # --- openai [provider-openai.md §7.2, §7.3]
+  - id: openai/gpt-6-luna
+    capabilities: *openai_reasoning
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-07-01, input: 0.10, cached_input: 0.01, cache_write: 0.125, output: 0.50,
+         long_context: {threshold_input_tokens: 272000, input_mult: 2.0, output_mult: 1.5}}
+  - id: openai/gpt-6.1-sol
+    capabilities:
+      <<: *openai_reasoning
+      tools: false                           # chat-completions tools need responses on 6.1 sol
+      tools_require_effort: null
+      sampling_params: none
+      effort_levels: [low, medium, high, xhigh, max]
+      effort_clamp: {none: low, minimal: low}
+    defaults: {reasoning_effort: low, max_completion_tokens: 8192}
+    reliability: {timeouts: {ttft_s: 60, inter_chunk_s: 60}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing:
+      - {effective_from: 2026-09-01, input: 2.00, cached_input: 0.10, cache_write: 2.50, output: 10.00,
+         long_context: {threshold_input_tokens: 272000, input_mult: 2.0, output_mult: 1.5}}
+  - id: openai/gpt-6-sol                     # strong tier when tools are present (effort forced to none)
+    capabilities: *openai_reasoning
+    defaults: {reasoning_effort: none, max_completion_tokens: 8192}
+    pricing:
+      - {effective_from: 2026-05-01, input: 2.00, cached_input: 0.20, cache_write: 2.50, output: 10.00,
+         long_context: {threshold_input_tokens: 272000, input_mult: 2.0, output_mult: 1.5}}
+
+  # --- anthropic
+  - id: anthropic/claude-haiku-4-5
+    capabilities:
+      <<: *claude_5_5
+      forced_tool_choice: true
+      prefill: true
+      sampling_params: temp_or_top_p
+      effort_levels: [none, low, medium, high]
+      effort_clamp: {minimal: none, xhigh: high, max: high}
+      thinking_mode: manual
+      mid_conversation_system: false
+      max_output: 64000
+      context: 200000
+      min_max_tokens: 1
+      cache_min_tokens: 4096
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2025-10-01, input: 1.00, cached_input: 0.10, cache_write: 1.25, cache_write_1h: 2.00, output: 5.00}
+  - id: anthropic/claude-sonnet-5-5
+    capabilities: *claude_5_5
+    defaults: {reasoning_effort: medium, max_completion_tokens: 16000}
+    reliability: {timeouts: {ttft_s: 45, inter_chunk_s: 45}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing:
+      - {effective_from: 2026-08-01, input: 2.00, cached_input: 0.20, cache_write: 2.50, cache_write_1h: 4.00, output: 10.00}
+  - id: anthropic/claude-opus-5-5
+    capabilities: {<<: *claude_5_5, thinking_mode: adaptive_always}
+    defaults: {reasoning_effort: medium, max_completion_tokens: 16000}
+    reliability: {timeouts: {ttft_s: 60, inter_chunk_s: 60}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing:
+      - {effective_from: 2026-08-01, input: 4.00, cached_input: 0.20, cache_write: 5.00, cache_write_1h: 8.00, output: 20.00}
+
+  # --- gemini [provider-gemini.md §7]
+  - id: gemini/gemini-3.1-flash-lite
+    capabilities: {<<: *gemini_3, effort_levels: [minimal, low, medium, high], effort_clamp: {none: minimal}}   # levels UNVERIFIED
+    defaults: {reasoning_effort: minimal, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-03-01, input: 0.25, cached_input: 0.025, output: 1.50}
+  - id: gemini/gemini-3.8-flash
+    capabilities: {<<: *gemini_3, effort_levels: [low, medium, high], effort_clamp: {none: low, minimal: low, xhigh: high, max: high}}
+    defaults: {reasoning_effort: high, max_completion_tokens: 8192}
+    reliability: {timeouts: {ttft_s: 60, inter_chunk_s: 60}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing:
+      - {effective_from: 2026-09-02, input: 0.75, cached_input: 0.075, output: 3.75}   # intro price
+      - {effective_from: 2027-01-01, input: 1.50, cached_input: 0.15, output: 7.50}
+  - id: gemini/gemini-3.1-pro-preview
+    status: preview
+    billing: paid
+    capabilities: {<<: *gemini_3, effort_levels: [low, medium, high], effort_clamp: {none: low, minimal: low, xhigh: high, max: high}}
+    defaults: {reasoning_effort: high, max_completion_tokens: 8192}
+    reliability: {timeouts: {ttft_s: 60, inter_chunk_s: 60}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing:
+      - {effective_from: 2026-02-01, input: 2.00, cached_input: 0.20, output: 12.00,
+         long_context: {threshold_input_tokens: 200000, input_mult: 2.0, output_mult: 1.5}}
+
+  # --- local
+  - id: "ollama/llama3.2:1b"
+    capabilities:
+      <<: *open_chat
+      forced_tool_choice: false
+      json_schema: true
+      max_output: 512
+      context: 4096                          # OLLAMA_CONTEXT_LENGTH, not the model max
+    defaults: {temperature: 0.6, max_completion_tokens: 512}
+    pricing: [{effective_from: 2024-01-01, input: 0, cached_input: 0, output: 0}]
+
+  # --- mock
+  - id: mock/echo
+    capabilities: *openai_reasoning
+    defaults: {mock: {text: echo}}
+    pricing: [{effective_from: 2024-01-01, input: 1.00, cached_input: 0.10, output: 2.00}]   # non-zero to exercise C9
+  - id: mock/flaky                           # fails the first attempt of every request with a 529, then serves
+    capabilities: *openai_reasoning
+    defaults: {mock: {text: echo, fail: {status: 529, first_n_attempts: 1}}}
+    pricing: [{effective_from: 2024-01-01, input: 1.00, cached_input: 0.10, output: 2.00}]
+  - id: mock/down                            # always answers 529, so a chain must fall over to the next deployment
+    capabilities: *openai_reasoning
+    defaults: {mock: {text: echo, fail: {status: 529}}}
+    pricing: [{effective_from: 2024-01-01, input: 1.00, cached_input: 0.10, output: 2.00}]
+  - id: mock_http/gpt-mock
+    capabilities: *openai_reasoning
+    pricing: [{effective_from: 2024-01-01, input: 1.00, cached_input: 0.10, output: 2.00}]
+
+  # --- openrouter (paid credit; prices checked against openrouter.ai/api/v1/models on 2026-10-08)
+  - id: openrouter/openai/gpt-6-luna
+    # openrouter lists no luna endpoint taking sampling params, and require_parameters turns that into a 404
+    capabilities: {<<: *openai_reasoning, sampling_params: none}
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-07-01, input: 0.10, cached_input: 0.01, output: 0.50}]
+  - id: openrouter/openai/gpt-6.1-sol
+    capabilities: {<<: *openai_reasoning, tools: false, sampling_params: none,
+                   effort_levels: [low, medium, high, xhigh, max], effort_clamp: {none: low, minimal: low}}
+    defaults: {reasoning_effort: low, max_completion_tokens: 8192}
+    reliability: {timeouts: {ttft_s: 60, inter_chunk_s: 60}, deadline_s: {non_stream: 180, stream: 300}}
+    pricing: [{effective_from: 2026-09-01, input: 2.00, cached_input: 0.10, output: 10.00}]
+  - id: openrouter/anthropic/claude-haiku-4.5
+    capabilities: *open_chat
+    defaults: {max_completion_tokens: 1024}
+    pricing: [{effective_from: 2025-10-01, input: 1.00, cached_input: 0.10, output: 5.00}]
+
+  # --- coding-plan subscriptions (flat fee, quota windows; model lists UNVERIFIED until a live call)
+  - id: zai_coding/glm-5
+    capabilities: {<<: *open_chat, forced_tool_choice: false, json_schema: false, temperature_max: 1.0, stop_max: 1, context: 200000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: zai_coding/glm-4.7
+    capabilities: {<<: *open_chat, forced_tool_choice: false, json_schema: false, temperature_max: 1.0, stop_max: 1, context: 200000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: qwen_coding/qwen3.7-plus
+    capabilities: {<<: *open_chat, forced_tool_choice: false, parallel_tool_calls: true, context: 1000000}
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: qwen_coding/qwen3-coder-plus
+    capabilities: {<<: *open_chat, forced_tool_choice: false, parallel_tool_calls: true, context: 1000000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: qwen_coding/kimi-k2.5                # other labs' models served on the alibaba coding plan
+    capabilities: {<<: *open_chat, forced_tool_choice: false, context: 256000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: qwen_coding/glm-5
+    capabilities: {<<: *open_chat, forced_tool_choice: false, json_schema: false, temperature_max: 1.0, context: 200000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: qwen_coding/MiniMax-M2.5
+    capabilities: {<<: *open_chat, forced_tool_choice: false, context: 200000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+  - id: minimax_coding/MiniMax-M2.7
+    capabilities: {<<: *open_chat, forced_tool_choice: false, context: 200000}
+    defaults: {max_completion_tokens: 4096}
+    pricing: [{effective_from: 2026-01-01, input: 0, output: 0}]
+
+  # --- labs, weak candidates (provider-model-labs.md §7)
+  - id: deepseek/deepseek-flash
+    capabilities:
+      <<: *open_chat
+      forced_tool_choice: false              # required/named 400 in thinking mode
+      json_schema: false                     # emulated as json_object by the quirk profile
+      vision: true
+      effort_levels: [none, low, high, max]
+      effort_clamp: {minimal: low, medium: high, xhigh: max}
+      thinking_mode: toggle
+      stop_max: 16
+      max_output: 384000
+      context: 1000000
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-07-24, input: 0.30, cached_input: 0.006, output: 1.20}   # peak price as upper bound
+  - id: zai/glm-5.3-flash
+    capabilities: {<<: *open_chat, forced_tool_choice: false, json_schema: false, vision: true, temperature_max: 1.0, stop_max: 1}
+    defaults: {max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-09-01, input: 0.15, cached_input: 0.03, output: 0.50}
+  - id: zai/glm-4.7-flash                    # free model on the normal api
+    capabilities: {<<: *open_chat, forced_tool_choice: false, json_schema: false, temperature_max: 1.0, stop_max: 1}
+    billing: free_tier
+    defaults: {max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-01-01, input: 0, output: 0}
+  - id: qwen/qwen3.8-flash
+    capabilities:
+      <<: *open_chat
+      forced_tool_choice: false
+      parallel_tool_calls: true
+      effort_levels: [none, low, medium, xhigh]
+      effort_clamp: {minimal: low, high: xhigh, max: xhigh}
+      thinking_mode: toggle
+      max_output: 32768
+      context: 1000000
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-09-01, input: 0.15, output: 0.47}
+  - id: mistral/mistral-small-latest
+    capabilities:
+      <<: *open_chat
+      parallel_tool_calls: true
+      vision: true
+      n: true
+      temperature_max: 1.5
+      effort_levels: [none, low, medium, high, xhigh]
+      effort_clamp: {minimal: low, max: xhigh}
+      context: 256000
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-03-01, input: 0.15, output: 0.60}
+  - id: moonshot/kimi-k3                     # expensive; explicit use only
+    capabilities:
+      <<: *open_chat
+      parallel_tool_calls: false
+      vision: true
+      effort_levels: [low, high, max]
+      effort_clamp: {none: low, minimal: low, medium: high, xhigh: max}
+      thinking_mode: effort
+      stop_max: 5
+      max_output: 131072
+      context: 1000000
+    defaults: {reasoning_effort: low, max_completion_tokens: 8192}
+    pricing:
+      - {effective_from: 2026-09-01, input: 3.00, cached_input: 0.30, cache_write: 3.00, output: 15.00}
+  - id: xai/grok-4.3
+    capabilities:
+      <<: *open_chat
+      parallel_tool_calls: true
+      json_schema_strict: false              # strict accepted, not enforced
+      vision: true
+      n: true
+      effort_levels: [none, low, medium, high]
+      effort_clamp: {minimal: low, xhigh: high, max: high}
+      thinking_mode: effort
+      context: 1000000
+    defaults: {reasoning_effort: none, max_completion_tokens: 4096}
+    pricing:
+      - {effective_from: 2026-06-01, input: 1.25, cached_input: 0.20, output: 2.50,
+         long_context: {threshold_input_tokens: 200000, input_mult: 2.0, output_mult: 2.0}}
+
+# canonical open-weight models served by several hosts; each host becomes deployment `<provider>/<model id>`.
+# selection: price orders hosts by current list price; order keeps the listed order.
+# host choice never changes the model class, so these may sit inside one tier group.
+models:
+  openai/gpt-oss-120b:
+    hf_repo: openai/gpt-oss-120b
+    native_precision: mxfp4
+    capabilities: *gpt_oss
+    defaults: {reasoning_effort: low, max_completion_tokens: 4096}
+    selection: price
+    hosts:
+      - provider: deepinfra
+        upstream_model: openai/gpt-oss-120b
+        quantization: bf16
+        pricing: [{effective_from: 2026-10-01, input: 0.037, output: 0.17}]
+      - provider: groq
+        upstream_model: openai/gpt-oss-120b
+        capabilities: {json_schema: false, json_object: false}   # structured outputs do not stream on groq
+        billing: free_tier
+        pricing: [{effective_from: 2026-10-01, input: 0.15, cached_input: 0.075, output: 0.60}]
+      - provider: fireworks
+        upstream_model: gpt-oss-120b
+        pricing: [{effective_from: 2026-10-01, input: 0.15, cached_input: 0.015, output: 0.60}]
+      - provider: together
+        upstream_model: openai/gpt-oss-120b
+        pricing: [{effective_from: 2026-10-01, input: 0.15, output: 0.60}]
+      - provider: cerebras
+        upstream_model: gpt-oss-120b
+        quantization: fp8
+        capabilities: {json_schema: false, json_object: false}   # no json_object with stream, no tools + response_format
+        pricing: [{effective_from: 2026-10-01, input: 0.35, output: 0.75}]
+  openai/gpt-oss-20b:
+    hf_repo: openai/gpt-oss-20b
+    native_precision: mxfp4
+    capabilities: *gpt_oss
+    defaults: {reasoning_effort: low, max_completion_tokens: 4096}
+    selection: price
+    hosts:
+      - provider: deepinfra
+        upstream_model: openai/gpt-oss-20b
+        pricing: [{effective_from: 2026-10-01, input: 0.03, output: 0.14}]
+      - provider: groq
+        upstream_model: openai/gpt-oss-20b
+        capabilities: {json_schema: false, json_object: false}
+        billing: free_tier
+        pricing: [{effective_from: 2026-10-01, input: 0.075, output: 0.30}]
+
+groups:                                      # ordered fallback chains; quality class never changes inside a group
+  weak:
+    chain: [openai/gpt-6-luna, anthropic/claude-haiku-4-5, gemini/gemini-3.1-flash-lite, openai/gpt-oss-120b,
+            "ollama/llama3.2:1b"]
+  strong:
+    chain: [openai/gpt-6.1-sol, anthropic/claude-sonnet-5-5, gemini/gemini-3.1-pro-preview]
+    chain_with_tools: [openai/gpt-6-sol, anthropic/claude-sonnet-5-5, gemini/gemini-3.1-pro-preview]
+  premium:
+    chain: [anthropic/claude-opus-5-5]
+  resilient:                                 # handout fallback demo; ollama only when enabled
+    chain: [openai/gpt-6-luna, anthropic/claude-haiku-4-5, "ollama/llama3.2:1b"]
+  weak-open:
+    chain: [openai/gpt-oss-120b]
+  weak-labs:
+    chain: [deepseek/deepseek-flash, zai/glm-5.3-flash, qwen/qwen3.8-flash]
+  weak-anthropic: {chain: [anthropic/claude-haiku-4-5]}
+  strong-anthropic: {chain: [anthropic/claude-sonnet-5-5]}
+  demo-chaos: {chain: [mock/down, mock/echo]}
+  coding-plans:                              # subscription upstreams; falls through to paid labs when quota is spent
+    chain: [zai_coding/glm-5, qwen_coding/qwen3.7-plus, minimax_coding/MiniMax-M2.7, deepseek/deepseek-flash]
+
+aliases:
+  gg/auto: {router: true, groups: [weak, strong]}
+  gg/weak: {group: weak}
+  gg/strong: {group: strong}
+  gg/premium: {group: premium}
+  gg/resilient: {group: resilient}
+  gg/weak-open: {group: weak-open}
+  gg/weak-labs: {group: weak-labs}
+  gg/demo-chaos: {group: demo-chaos}
+  gg/coding-plans: {group: coding-plans}
+bare_names: true
+
+profiles:
+  prod: {}
+  dev-free:                                  # free tiers first
+    groups:
+      weak: {chain: [gemini/gemini-3.1-flash-lite, groq/openai/gpt-oss-120b, zai/glm-4.7-flash, openai/gpt-6-luna,
+                     "ollama/llama3.2:1b"]}
+      strong: {chain: [gemini/gemini-3.8-flash, openai/gpt-6.1-sol, anthropic/claude-sonnet-5-5],
+               chain_with_tools: [gemini/gemini-3.8-flash, openai/gpt-6-sol, anthropic/claude-sonnet-5-5]}
+  ci:
+    only_providers: [mock]
+    groups:
+      weak: {chain: [mock/echo]}
+      strong: {chain: [mock/echo], chain_with_tools: [mock/echo]}
+      premium: {chain: [mock/echo]}
+      resilient: {chain: [mock/flaky, mock/echo]}
+  loadtest:
+    only_providers: [mock_http]
+    groups:
+      weak: {chain: [mock_http/gpt-mock]}
+      strong: {chain: [mock_http/gpt-mock], chain_with_tools: [mock_http/gpt-mock]}
+  demo:                                      # hosted demo: free tiers first; gg/demo-chaos falls over from a 529 mock
+    groups:
+      weak: {chain: [gemini/gemini-3.1-flash-lite, groq/openai/gpt-oss-120b, zai/glm-4.7-flash, openai/gpt-6-luna]}
+      strong: {chain: [gemini/gemini-3.8-flash, openai/gpt-6.1-sol, anthropic/claude-sonnet-5-5],
+               chain_with_tools: [gemini/gemini-3.8-flash, openai/gpt-6-sol, anthropic/claude-sonnet-5-5]}
+      demo-chaos: {chain: [mock/down, gemini/gemini-3.1-flash-lite, mock/echo]}
