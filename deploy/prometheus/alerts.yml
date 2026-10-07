@@ -1,0 +1,90 @@
+# gg alert rules (C10 §4.7); no alertmanager locally, firing alerts show in prometheus and grafana
+groups:
+  - name: gg
+    rules:
+      - alert: GGTargetDown
+        expr: up{job="gg"} == 0
+        for: 2m
+        labels: {severity: critical}
+        annotations:
+          summary: "gateway target {{ $labels.instance }} is not being scraped"
+
+      - alert: GGHighErrorRate
+        expr: |
+          sum(rate(gg_requests_total{status_class="5xx"}[5m])) / sum(rate(gg_requests_total[5m])) > 0.05
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "more than 5% of requests end in 5xx"
+
+      - alert: GGOverheadRegression
+        expr: |
+          histogram_quantile(0.99, sum by (le) (rate(gg_gateway_overhead_seconds_bucket{phase="pre_upstream"}[5m]))) > 0.1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "p99 pre-upstream gateway overhead above 100 ms (interpolated)"
+
+      - alert: GGLatencyP99High
+        expr: |
+          histogram_quantile(0.99, sum by (le) (rate(gg_request_duration_seconds_bucket{stream="false",cache="miss"}[5m]))) > 10
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "p99 non-stream cache-miss latency above 10 s"
+
+      - alert: GGBreakerOpen
+        expr: max by (deployment) (gg_circuit_state) == 2
+        for: 2m
+        labels: {severity: warning}
+        annotations:
+          summary: "circuit breaker open for {{ $labels.deployment }}"
+
+      - alert: GGFallbackSpike
+        expr: sum(rate(gg_fallbacks_total[5m])) / sum(rate(gg_requests_total[5m])) > 0.1
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "more than 10% of requests fall back to another deployment"
+
+      - alert: GGRouterFailingOpen
+        expr: |
+          sum(rate(gg_routing_decisions_total{reason=~"fallback.*"}[5m])) / sum(rate(gg_routing_decisions_total[5m])) > 0.2
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "router scorer failing open on more than 20% of decisions (cost goes up)"
+
+      - alert: GGSpendBurn
+        expr: sum(increase(gg_cost_usd_total[1h])) > 0.5
+        labels: {severity: warning}
+        annotations:
+          summary: "upstream spend above $0.50 in the last hour"
+
+      - alert: GGSpendCapHit
+        expr: sum by (provider, period) (increase(gg_spend_guard_blocks_total[5m])) > 0
+        labels: {severity: critical}
+        annotations:
+          summary: "provider {{ $labels.provider }} reached its {{ $labels.period }} spend cap"
+
+      - alert: GGGuardrailErrors
+        expr: sum by (stage, guardrail) (increase(gg_guardrail_errors_total[5m])) > 0
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "guardrail {{ $labels.guardrail }} ({{ $labels.stage }}) is erroring"
+
+      - alert: GGCacheBackendErrors
+        expr: |
+          sum(rate(gg_cache_lookups_total{result="error"}[5m])) / sum(rate(gg_cache_lookups_total[5m])) > 0.01
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "more than 1% of cache lookups fail"
+
+      - alert: GGRateLimitDegraded
+        expr: max(gg_ratelimit_degraded) == 1
+        for: 5m
+        labels: {severity: warning}
+        annotations:
+          summary: "rate limits running on the local fallback (redis unavailable)"

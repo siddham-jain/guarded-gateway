@@ -1,0 +1,3366 @@
+{
+  "uid": "gg-overview",
+  "title": "GG overview",
+  "description": "Gateway overview: traffic, latency, cost, cache, routing, breakers, guardrails. Quantiles are interpolated; README numbers come from raw samples.",
+  "tags": [
+    "gg"
+  ],
+  "timezone": "utc",
+  "editable": false,
+  "graphTooltip": 1,
+  "refresh": "10s",
+  "time": {
+    "from": "now-1h",
+    "to": "now"
+  },
+  "schemaVersion": 39,
+  "version": 2,
+  "templating": {
+    "list": [
+      {
+        "name": "alias",
+        "label": "alias",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gg-prometheus"
+        },
+        "query": {
+          "query": "label_values(gg_requests_total, alias)",
+          "refId": "alias"
+        },
+        "definition": "label_values(gg_requests_total, alias)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "provider",
+        "label": "provider",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gg-prometheus"
+        },
+        "query": {
+          "query": "label_values(gg_upstream_attempts_total, provider)",
+          "refId": "provider"
+        },
+        "definition": "label_values(gg_upstream_attempts_total, provider)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      },
+      {
+        "name": "deployment",
+        "label": "deployment",
+        "type": "query",
+        "datasource": {
+          "type": "prometheus",
+          "uid": "gg-prometheus"
+        },
+        "query": {
+          "query": "label_values(gg_upstream_attempts_total, deployment)",
+          "refId": "deployment"
+        },
+        "definition": "label_values(gg_upstream_attempts_total, deployment)",
+        "includeAll": true,
+        "multi": true,
+        "allValue": ".*",
+        "refresh": 2,
+        "sort": 1,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        }
+      }
+    ]
+  },
+  "annotations": {
+    "list": []
+  },
+  "links": [
+    {
+      "title": "Providers",
+      "type": "link",
+      "url": "/d/gg-providers",
+      "keepTime": true,
+      "includeVars": true
+    }
+  ],
+  "panels": [
+    {
+      "type": "row",
+      "title": "Headline",
+      "id": 1,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 0
+      },
+      "panels": []
+    },
+    {
+      "type": "stat",
+      "title": "Requests/s",
+      "description": "sum(rate(gg_requests_total[1m]))",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{alias=~\"$alias\"}[1m]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 2,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 0,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "5xx ratio",
+      "description": "5xx / all requests over 5m (logical status: mid-stream failures count as 5xx).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{status_class=\"5xx\",alias=~\"$alias\"}[5m])) / sum(rate(gg_requests_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 3,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 3,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "p99 latency (miss)",
+      "description": "Interpolated p99 of gg_request_duration_seconds for cache misses.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gg_request_duration_seconds_bucket{cache=\"miss\"}[5m])))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 4,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 6,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Overhead p99",
+      "description": "Interpolated p99 gateway overhead (total phase); README numbers come from raw samples.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gg_gateway_overhead_seconds_bucket{phase=\"total\"}[5m])))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 5,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 9,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Avg cost/request",
+      "description": "Upstream USD over the range / served cache-miss requests.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(increase(gg_cost_usd_total[$__range])) / sum(increase(gg_requests_total{status_class=\"2xx\",cache=\"miss\"}[$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 6
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 6,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 12,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Cache hit %",
+      "description": "Requests served from the exact or semantic cache.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{cache=~\"exact_hit|semantic_hit\",alias=~\"$alias\"}[5m])) / sum(rate(gg_requests_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 7,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 15,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "% strong",
+      "description": "Share of router decisions that chose the strong tier.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_routing_decisions_total{tier=\"strong\"}[5m])) / sum(rate(gg_routing_decisions_total[5m]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 8,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 18,
+        "y": 1
+      }
+    },
+    {
+      "type": "stat",
+      "title": "In flight",
+      "description": "Requests currently in flight.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(gg_inflight_requests)",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 9,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 3,
+        "x": 21,
+        "y": 1
+      }
+    },
+    {
+      "type": "row",
+      "title": "Traffic & errors",
+      "id": 10,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 5
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests/s by status class",
+      "description": "Logical status: committed streams that fail mid-stream count as 5xx.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (status_class) (rate(gg_requests_total{alias=~\"$alias\"}[1m]))",
+          "legendFormat": "{{status_class}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 11,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 6
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Error ratio",
+      "description": "5xx and 4xx shares of all requests over 5m.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{status_class=\"5xx\",alias=~\"$alias\"}[5m])) / sum(rate(gg_requests_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "5xx",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{status_class=\"4xx\",alias=~\"$alias\"}[5m])) / sum(rate(gg_requests_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "4xx",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 12,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 6
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Errors by type",
+      "description": "Failed requests by error_type.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (error_type) (rate(gg_request_errors_total[5m]))",
+          "legendFormat": "{{error_type}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 13,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 6
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Requests/s by alias",
+      "description": "Client-facing model alias (unknown aliases fold into other).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (alias) (rate(gg_requests_total{alias=~\"$alias\"}[1m]))",
+          "legendFormat": "{{alias}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 14,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 14
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "In flight by stream",
+      "description": "Requests in flight.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (stream) (gg_inflight_requests)",
+          "legendFormat": "stream={{stream}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 15,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 14
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Client disconnects by phase",
+      "description": "Client went away before commit, before the first token, mid-stream or on a non-stream call.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (phase) (rate(gg_client_disconnects_total[5m]))",
+          "legendFormat": "{{phase}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 16,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 14
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Event loop lag",
+      "description": "Interpolated p50/p99 event loop scheduling lag.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(gg_event_loop_lag_seconds_bucket[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gg_event_loop_lag_seconds_bucket[5m])))",
+          "legendFormat": "p99",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 17,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 22
+      }
+    },
+    {
+      "type": "row",
+      "title": "Latency",
+      "id": 18,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 30
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Request duration (miss)",
+      "description": "Interpolated p50/p95/p99 of total request duration for cache misses.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(gg_request_duration_seconds_bucket{cache=\"miss\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(gg_request_duration_seconds_bucket{cache=\"miss\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le) (rate(gg_request_duration_seconds_bucket{cache=\"miss\"}[5m])))",
+          "legendFormat": "p99",
+          "refId": "C",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 19,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 31
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "TTFT by provider",
+      "description": "Interpolated p50/p99 time to first client byte (streams); provider=cache for hits.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, provider) (rate(gg_ttft_seconds_bucket{provider=~\"$provider\"}[5m])))",
+          "legendFormat": "p50 {{provider}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, provider) (rate(gg_ttft_seconds_bucket{provider=~\"$provider\"}[5m])))",
+          "legendFormat": "p99 {{provider}}",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 20,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 31
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Gateway overhead by phase",
+      "description": "Interpolated p50/p99 of gg_gateway_overhead_seconds per phase (pre_upstream, ttft_added, post, stream_tail, total, failover).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, phase) (rate(gg_gateway_overhead_seconds_bucket[5m])))",
+          "legendFormat": "p50 {{phase}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, phase) (rate(gg_gateway_overhead_seconds_bucket[5m])))",
+          "legendFormat": "p99 {{phase}}",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 21,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 31
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "Stage p99",
+      "description": "Interpolated p99 exclusive time per pipeline stage.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, stage) (rate(gg_stage_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{stage}}",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 22,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 39
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Upstream duration by deployment",
+      "description": "Interpolated p50 of successful upstream attempts.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, deployment) (rate(gg_upstream_duration_seconds_bucket{outcome=\"ok\",deployment=~\"$deployment\"}[5m])))",
+          "legendFormat": "{{deployment}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 23,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 39
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Time per output token",
+      "description": "Interpolated p50 upstream time per output token after the first.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, deployment) (rate(gg_time_per_output_token_seconds_bucket{deployment=~\"$deployment\"}[5m])))",
+          "legendFormat": "{{deployment}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 24,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 39
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Request duration heatmap",
+      "description": "Distribution of gg_request_duration_seconds (all requests).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (le) (increase(gg_request_duration_seconds_bucket[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "yAxis": {
+          "unit": "s"
+        },
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 64
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "id": 25,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 47
+      }
+    },
+    {
+      "type": "row",
+      "title": "Cost & tokens",
+      "id": 26,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 55
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "USD per hour by deployment",
+      "description": "sum(rate(gg_cost_usd_total[1h])) * 3600, stacked by deployment.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (deployment) (rate(gg_cost_usd_total{deployment=~\"$deployment\"}[1h])) * 3600",
+          "legendFormat": "{{deployment}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 27,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 56
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Cost per request",
+      "description": "Interpolated p50/p95 of gg_request_cost_usd per served request.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le) (rate(gg_request_cost_usd_bucket{alias=~\"$alias\"}[5m])))",
+          "legendFormat": "p50",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.95, sum by (le) (rate(gg_request_cost_usd_bucket{alias=~\"$alias\"}[5m])))",
+          "legendFormat": "p95",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 28,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 56
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Savings: cache and routing (estimate)",
+      "description": "Cache: upstream USD avoided by hits. Routing: strong-equivalent cost of weak-routed requests minus their actual cost (estimate, same tokens at strong prices).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer) (increase(gg_cost_saved_usd_total[1h]))",
+          "legendFormat": "cache {{layer}} /h",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(increase(gg_routing_strong_equiv_cost_usd_total[1h])) - sum(increase(gg_cost_usd_total{tier=\"weak\"}[1h]))",
+          "legendFormat": "routing (estimate) /h",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 29,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 56
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Tokens/s by type",
+      "description": "Upstream tokens; input includes cached and cache-write, output includes reasoning.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (type) (rate(gg_tokens_total{provider=~\"$provider\",deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "{{type}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 30,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 64
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Upstream prompt-cache ratio and estimated usage",
+      "description": "cached_input / input tokens, and the share of tokens whose usage was estimated (provider sent none).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_tokens_total{type=\"cached_input\",provider=~\"$provider\",deployment=~\"$deployment\"}[5m])) / sum(rate(gg_tokens_total{type=\"input\",provider=~\"$provider\",deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "prompt cache ratio",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_tokens_total{usage_source=\"estimated\",provider=~\"$provider\",deployment=~\"$deployment\"}[5m])) / sum(rate(gg_tokens_total{provider=~\"$provider\",deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "estimated share",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 31,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 64
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Pricing gaps and spend-guard blocks",
+      "description": "Usage that could not be priced, and upstream attempts refused by the provider spend cap.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (deployment) (increase(gg_pricing_missing_total[5m]))",
+          "legendFormat": "unpriced {{deployment}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (provider, period) (increase(gg_spend_guard_blocks_total[5m]))",
+          "legendFormat": "cap {{provider}} {{period}}",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 32,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 64
+      }
+    },
+    {
+      "type": "row",
+      "title": "Cache",
+      "id": 33,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 72
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Served from cache",
+      "description": "Exact + semantic hits / chat requests.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_requests_total{cache=~\"exact_hit|semantic_hit\"}[5m])) / sum(rate(gg_requests_total{endpoint=\"chat\"}[5m]))",
+          "legendFormat": "served from cache",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 34,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 73
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Hit rate by layer",
+      "description": "hits / lookups per layer (bypasses excluded from the denominator).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer) (rate(gg_cache_lookups_total{result=\"hit\"}[5m])) / sum by (layer) (rate(gg_cache_lookups_total{result!=\"bypass\"}[5m]))",
+          "legendFormat": "{{layer}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 35,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 73
+      }
+    },
+    {
+      "type": "bargauge",
+      "title": "$ saved by layer (range)",
+      "description": "sum by (layer) (increase(gg_cost_saved_usd_total[$__range])).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer) (increase(gg_cost_saved_usd_total[$__range]))",
+          "legendFormat": "{{layer}}",
+          "refId": "A",
+          "range": false,
+          "instant": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "gradient",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "id": 36,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 73
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Semantic distance",
+      "description": "Nearest-neighbour cosine distance; hits sit below the configured threshold.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (le) (increase(gg_semantic_cache_distance_bucket[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "yAxis": {
+          "unit": "short"
+        },
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 64
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "id": 37,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 81
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Lookup p99 by layer",
+      "description": "Interpolated p99 cache lookup latency.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, layer) (rate(gg_cache_lookup_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{layer}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 38,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 81
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Lookups by result",
+      "description": "Cache lookups by layer and result.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer, result) (rate(gg_cache_lookups_total[5m]))",
+          "legendFormat": "{{layer}} {{result}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 39,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 81
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Bypass reasons",
+      "description": "Requests that skipped the cache, by reason.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (reason) (rate(gg_cache_bypass_total[5m]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 40,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 89
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Store results",
+      "description": "Cache writes by layer, result and reason.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer, result, reason) (rate(gg_cache_stores_total[5m]))",
+          "legendFormat": "{{layer}} {{result}} {{reason}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 41,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 89
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Single-flight and tokens saved",
+      "description": "Lock outcomes on misses, and upstream tokens avoided by hits.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (outcome) (rate(gg_cache_singleflight_total[5m]))",
+          "legendFormat": "sf {{outcome}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (layer, type) (rate(gg_tokens_saved_total[5m]))",
+          "legendFormat": "tokens {{layer}} {{type}}",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 42,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 89
+      }
+    },
+    {
+      "type": "row",
+      "title": "Routing & fallbacks",
+      "id": 43,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 97
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Tier mix",
+      "description": "Router decisions per second by tier.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (tier) (rate(gg_routing_decisions_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "{{tier}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 44,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 98
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Decision reasons",
+      "description": "Why each tier was chosen; fallback means the scorer failed open.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (reason) (rate(gg_routing_decisions_total{alias=~\"$alias\"}[5m]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 45,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 98
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Scorer latency",
+      "description": "Interpolated p50/p99 of the Jev scorer call (cached answers included).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.5, sum by (le, scorer) (rate(gg_router_score_duration_seconds_bucket[5m])))",
+          "legendFormat": "p50 {{scorer}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, scorer) (rate(gg_router_score_duration_seconds_bucket[5m])))",
+          "legendFormat": "p99 {{scorer}}",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 46,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 98
+      }
+    },
+    {
+      "type": "heatmap",
+      "title": "Score heatmap",
+      "description": "Router score distribution, approx P(strong beats weak).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (le) (increase(gg_router_score_bucket[$__rate_interval]))",
+          "legendFormat": "{{le}}",
+          "refId": "A",
+          "format": "heatmap",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "calculate": false,
+        "yAxis": {
+          "unit": "short"
+        },
+        "cellGap": 1,
+        "color": {
+          "mode": "scheme",
+          "scheme": "Oranges",
+          "steps": 64
+        },
+        "tooltip": {
+          "mode": "single",
+          "yHistogram": true
+        },
+        "legend": {
+          "show": true
+        }
+      },
+      "id": 47,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 106
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Decision cache hit rate and % strong",
+      "description": "Scorer answer-cache hits / lookups, and the strong share of decisions.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_routing_decision_cache_total{result=\"hit\"}[5m])) / sum(rate(gg_routing_decision_cache_total[5m]))",
+          "legendFormat": "decision cache hit",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(rate(gg_routing_decisions_total{tier=\"strong\"}[5m])) / sum(rate(gg_routing_decisions_total[5m]))",
+          "legendFormat": "% strong",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 48,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 106
+      }
+    },
+    {
+      "type": "stat",
+      "title": "Routing savings (estimate, range)",
+      "description": "Strong-equivalent cost of weak-routed requests minus their actual cost over the range; same tokens at strong prices.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum(increase(gg_routing_strong_equiv_cost_usd_total[$__range])) - sum(increase(gg_cost_usd_total{tier=\"weak\"}[$__range]))",
+          "legendFormat": "",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 4
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "value",
+        "graphMode": "area",
+        "textMode": "auto"
+      },
+      "id": 49,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 4,
+        "w": 8,
+        "x": 16,
+        "y": 106
+      }
+    },
+    {
+      "type": "table",
+      "title": "Fallbacks from → to",
+      "description": "Cross-deployment fallbacks over the range by provider pair and reason.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (from_provider, to_provider, reason) (increase(gg_fallbacks_total[$__range])) > 0",
+          "legendFormat": "",
+          "refId": "A",
+          "range": false,
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "showHeader": true,
+        "sortBy": [
+          {
+            "displayName": "Value",
+            "desc": true
+          }
+        ]
+      },
+      "transformations": [
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true
+            }
+          }
+        }
+      ],
+      "id": 50,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 114
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Attempts by result",
+      "description": "Upstream attempts: ok, retry, fallback, fail.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (result) (rate(gg_upstream_attempts_total{provider=~\"$provider\",deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "{{result}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 51,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 114
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Deployment skips",
+      "description": "Plan entries skipped without an upstream call (open breaker, tier change, context window, no adapter).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (reason) (rate(gg_deployment_skips_total{deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "{{reason}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 52,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 114
+      }
+    },
+    {
+      "type": "row",
+      "title": "Breakers & rate limits",
+      "id": 53,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 122
+      },
+      "panels": []
+    },
+    {
+      "type": "state-timeline",
+      "title": "Circuit state",
+      "description": "gg_circuit_state per deployment: 0 closed, 1 half-open, 2 open.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "max by (deployment) (gg_circuit_state{deployment=~\"$deployment\"})",
+          "legendFormat": "{{deployment}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "closed",
+                  "color": "green",
+                  "index": 0
+                },
+                "1": {
+                  "text": "half-open",
+                  "color": "yellow",
+                  "index": 1
+                },
+                "2": {
+                  "text": "open",
+                  "color": "red",
+                  "index": 2
+                }
+              }
+            }
+          ],
+          "color": {
+            "mode": "thresholds"
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "showValue": "never",
+        "mergeValues": true,
+        "rowHeight": 0.8
+      },
+      "id": 54,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 24,
+        "x": 0,
+        "y": 123
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Breaker transitions",
+      "description": "Transitions by deployment, target state and reason.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (deployment, to_state, reason) (increase(gg_circuit_transitions_total{deployment=~\"$deployment\"}[5m]))",
+          "legendFormat": "{{deployment}} → {{to_state}} ({{reason}})",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 55,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 131
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Upstream trouble",
+      "description": "Credential errors, mid-stream failures and requests that exhausted every deployment.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (provider) (rate(gg_provider_credential_errors_total[5m]))",
+          "legendFormat": "auth {{provider}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (phase, provider) (rate(gg_stream_errors_total[5m]))",
+          "legendFormat": "stream {{phase}} {{provider}}",
+          "refId": "B",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (status, code) (rate(gg_exhausted_total[5m]))",
+          "legendFormat": "exhausted {{status}} {{code}}",
+          "refId": "C",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 56,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 131
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Rate-limit rejections by limit",
+      "description": "429/402 refusals by limit (rpm, tpm, concurrency, budget, ...).",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (limit) (rate(gg_ratelimit_rejections_total[5m]))",
+          "legendFormat": "{{limit}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 57,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 131
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Budget events",
+      "description": "Key budget soft/hard limits and fail-open/fail-closed decisions, plus expired holds.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (event) (increase(gg_budget_events_total[5m]))",
+          "legendFormat": "{{event}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "increase(gg_budget_hold_expired_total[5m])",
+          "legendFormat": "holds expired",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 58,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 139
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Limits backend health",
+      "description": "Limits backend errors by op; degraded = 1 while the local fallback is active.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (op) (rate(gg_ratelimit_backend_errors_total[5m]))",
+          "legendFormat": "errors {{op}}",
+          "refId": "A",
+          "range": true
+        },
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "max(gg_ratelimit_degraded)",
+          "legendFormat": "degraded",
+          "refId": "B",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 59,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 139
+      }
+    },
+    {
+      "type": "row",
+      "title": "Guardrails",
+      "id": 60,
+      "collapsed": false,
+      "gridPos": {
+        "h": 1,
+        "w": 24,
+        "x": 0,
+        "y": 147
+      },
+      "panels": []
+    },
+    {
+      "type": "timeseries",
+      "title": "Decisions by guardrail × action",
+      "description": "Enforced guardrail verdicts per second.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (guardrail, action) (rate(gg_guardrail_decisions_total{mode=\"enforce\",action!=\"allow\"}[5m]))",
+          "legendFormat": "{{guardrail}} {{action}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never",
+            "stacking": {
+              "mode": "normal",
+              "group": "A"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 61,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 148
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Block rate by guardrail",
+      "description": "Enforced blocks / enforced decisions per guardrail.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (stage, guardrail) (rate(gg_guardrail_decisions_total{mode=\"enforce\",action=\"block\"}[5m])) / sum by (stage, guardrail) (rate(gg_guardrail_decisions_total{mode=\"enforce\",action!=\"skip\"}[5m]))",
+          "legendFormat": "{{stage}} {{guardrail}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 62,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 148
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Shadow would-block rate",
+      "description": "Shadow-mode guards: would-be blocks / shadow decisions; nothing was blocked.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (stage, guardrail) (rate(gg_guardrail_decisions_total{mode=\"shadow\",action=\"block\"}[5m])) / sum by (stage, guardrail) (rate(gg_guardrail_decisions_total{mode=\"shadow\",action!=\"skip\"}[5m]))",
+          "legendFormat": "{{stage}} {{guardrail}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 63,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 148
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Guardrail p99",
+      "description": "Interpolated p99 check latency per guardrail.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "histogram_quantile(0.99, sum by (le, stage, guardrail) (rate(gg_guardrail_duration_seconds_bucket[5m])))",
+          "legendFormat": "{{stage}} {{guardrail}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 64,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 156
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "Guardrail errors",
+      "description": "Timeouts, exceptions and overloads; the guard's on_error decides allow/flag/block.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (stage, guardrail, kind) (increase(gg_guardrail_errors_total[5m]))",
+          "legendFormat": "{{stage}} {{guardrail}} {{kind}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "lineWidth": 1,
+            "fillOpacity": 30,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 65,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 156
+      }
+    },
+    {
+      "type": "timeseries",
+      "title": "PII placeholders",
+      "description": "Placeholders redacted on input, restored on output, and unmatched.",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "gg-prometheus"
+          },
+          "expr": "sum by (direction, strategy) (rate(gg_pii_placeholders_total[5m]))",
+          "legendFormat": "{{direction}} {{strategy}}",
+          "refId": "A",
+          "range": true
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 10,
+            "showPoints": "never"
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom",
+          "showLegend": true
+        },
+        "tooltip": {
+          "mode": "multi",
+          "sort": "desc"
+        }
+      },
+      "id": 66,
+      "datasource": {
+        "type": "prometheus",
+        "uid": "gg-prometheus"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 156
+      }
+    }
+  ]
+}
