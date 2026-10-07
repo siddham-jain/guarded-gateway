@@ -1,0 +1,30 @@
+{"id": "p0001", "anchor": "What's the capital of Australia?", "candidate": "Which city is Australia's capital?", "should_hit": true, "category": "paraphrase", "split": "dev", "source": "hand"}
+{"id": "p0002", "anchor": "how do I reverse a list in python", "candidate": "python: reverse a list?", "should_hit": true, "category": "paraphrase", "split": "test", "source": "hand"}
+{"id": "p0003", "anchor": "Explain what a mutex is.", "candidate": "What is a mutex? Please explain.", "should_hit": true, "category": "paraphrase", "split": "dev", "source": "hand"}
+{"id": "p0004", "anchor": "How do I undo the last git commit but keep my changes?", "candidate": "Undo my most recent git commit without losing the changes", "should_hit": true, "category": "paraphrase", "split": "test", "source": "hand"}
+{"id": "p0005", "anchor": "What does HTTP status code 404 mean?", "candidate": "Meaning of the HTTP 404 status code", "should_hit": true, "category": "paraphrase", "split": "dev", "source": "hand"}
+{"id": "p0006", "anchor": "Summarise the causes of World War I.", "candidate": "What were the main causes of the First World War? Summarise.", "should_hit": true, "category": "paraphrase", "split": "test", "source": "hand"}
+{"id": "p0007", "anchor": "whats the capitol of france??", "candidate": "What is the capital of France?", "should_hit": true, "category": "surface_noise", "split": "dev", "source": "hand"}
+{"id": "p0008", "anchor": "HOW DO I CENTER A DIV IN CSS", "candidate": "how do i center a div in css", "should_hit": true, "category": "surface_noise", "split": "test", "source": "hand"}
+{"id": "p0009", "anchor": "convert json string to dict in python", "candidate": "Convert a JSON string to a dict in Python.", "should_hit": true, "category": "surface_noise", "split": "dev", "source": "hand"}
+{"id": "p0010", "anchor": "Can you please tell me how many bytes are in a kilobyte?", "candidate": "How many bytes are in a kilobyte?", "should_hit": true, "category": "politeness", "split": "dev", "source": "hand"}
+{"id": "p0011", "anchor": "Hi! Could you explain what DNS is, thanks", "candidate": "Explain what DNS is.", "should_hit": true, "category": "politeness", "split": "test", "source": "hand"}
+{"id": "p0012", "anchor": "What's the capital of France?", "candidate": "What's the capital of Germany?", "should_hit": false, "category": "entity_swap", "split": "dev", "source": "hand"}
+{"id": "p0013", "anchor": "How do I reverse a list in Python?", "candidate": "How do I reverse a list in JavaScript?", "should_hit": false, "category": "entity_swap", "split": "test", "source": "hand"}
+{"id": "p0014", "anchor": "Who wrote Pride and Prejudice?", "candidate": "Who wrote Sense and Sensibility?", "should_hit": false, "category": "entity_swap", "split": "dev", "source": "hand"}
+{"id": "p0015", "anchor": "What is 17 times 23?", "candidate": "What is 17 times 24?", "should_hit": false, "category": "number_change", "split": "dev", "source": "hand"}
+{"id": "p0016", "anchor": "Convert 100 degrees Celsius to Fahrenheit", "candidate": "Convert 100 degrees Fahrenheit to Celsius", "should_hit": false, "category": "number_change", "split": "test", "source": "hand"}
+{"id": "p0017", "anchor": "Give me 3 tips for better sleep", "candidate": "Give me 10 tips for better sleep", "should_hit": false, "category": "number_change", "split": "dev", "source": "hand"}
+{"id": "p0018", "anchor": "What happened in 1989 in Berlin?", "candidate": "What happened in 1961 in Berlin?", "should_hit": false, "category": "number_change", "split": "test", "source": "hand"}
+{"id": "p0019", "anchor": "What are the pros of remote work?", "candidate": "What are the cons of remote work?", "should_hit": false, "category": "negation", "split": "dev", "source": "hand"}
+{"id": "p0020", "anchor": "Is it safe to eat raw cookie dough?", "candidate": "Why is it unsafe to eat raw cookie dough?", "should_hit": false, "category": "negation", "split": "test", "source": "hand"}
+{"id": "p0021", "anchor": "Which is faster, Python or Go?", "candidate": "Which is slower, Python or Go?", "should_hit": false, "category": "negation", "split": "dev", "source": "hand"}
+{"id": "p0022", "anchor": "Summarise the French Revolution in one line.", "candidate": "Explain the French Revolution in detail.", "should_hit": false, "category": "scope_format", "split": "dev", "source": "hand"}
+{"id": "p0023", "anchor": "List the planets of the solar system as JSON.", "candidate": "List the planets of the solar system.", "should_hit": false, "category": "scope_format", "split": "test", "source": "hand"}
+{"id": "p0024", "anchor": "Translate 'good morning' into Spanish.", "candidate": "Translate 'good morning' into French.", "should_hit": false, "category": "scope_format", "split": "dev", "source": "hand"}
+{"id": "p0025", "anchor": "What is a mutex?", "candidate": "When should I use a mutex instead of a semaphore?", "should_hit": false, "category": "same_topic", "split": "dev", "source": "hand"}
+{"id": "p0026", "anchor": "What is Docker?", "candidate": "How do I install Docker on Ubuntu?", "should_hit": false, "category": "same_topic", "split": "test", "source": "hand"}
+{"id": "p0027", "anchor": "How does HTTPS work?", "candidate": "Is HTTPS slower than HTTP?", "should_hit": false, "category": "same_topic", "split": "dev", "source": "hand"}
+{"id": "p0028", "anchor": "hello there", "candidate": "hi there", "should_hit": true, "category": "short", "split": "dev", "source": "hand"}
+{"id": "p0029", "anchor": "yes please", "candidate": "no thanks", "should_hit": false, "category": "short", "split": "test", "source": "hand"}
+{"id": "p0030", "anchor": "thank you!", "candidate": "thanks a lot!", "should_hit": true, "category": "short", "split": "dev", "source": "hand"}

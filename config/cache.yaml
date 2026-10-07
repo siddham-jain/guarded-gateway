@@ -1,0 +1,28 @@
+# response cache (c8): exact layer keyed on the redacted request, semantic layer over the single user turn.
+# hashed into config_hash. per-key switches (scope key|global|off, semantic, allow_sampled, ttls) live in keys.yaml.
+version: 1
+
+exact:
+  enabled: true
+  min_ttl_s: 60                     # gg.cache_ttl_s and the key's default ttl are clamped to [min, min(max, key.max_ttl_s)]
+  max_ttl_s: 604800
+  max_value_bytes: 262144           # encoded size; larger replies are not stored
+  compress_over_bytes: 1024         # zlib level 6 above this
+  singleflight: true                # concurrent identical non-stream misses make one upstream call
+  singleflight_wait_s: 2.0          # followers poll this long, then go upstream uncached
+  singleflight_poll_s: 0.05
+  lock_ttl_ms: 30000
+  post_hoc_wait_s: 10               # how long a write waits for pending post-hoc output guards
+
+semantic:
+  enabled: true
+  embedder: {provider: fastembed, name: BAAI/bge-small-en-v1.5, dim: 384}
+  distance_threshold: 0.08          # starting point; to be tuned by the evals/cache sweep (precision >= 0.98)
+  deadline_s: 0.15                  # embed + search; slower counts as a miss
+  min_user_chars: 8
+  max_user_chars: 1200
+  index: hnsw                       # hnsw | flat
+
+backend:
+  op_timeout_s: 0.05                # per redis call; errors and timeouts are misses (fail open)
+  breaker: {errors: 5, window_s: 10, cooldown_s: 10}
