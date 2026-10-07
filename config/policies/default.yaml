@@ -1,0 +1,183 @@
+# guardrail policy (owners: C6 input, C7 output). bump `version` on every change: the effective policy hash feeds
+# config_hash, the x-gg-policy header and the eval baseline. guard-specific fields sit next to the common ones
+# (mode, on_error, timeout_ms, sample_rate, when); unknown fields fail at startup.
+id: default
+version: 1.3.0
+description: baseline policy for all keys
+
+defaults:
+  mode: enforce                      # enforce | shadow | off
+  on_error: flag                     # allow | flag | block (security guards override to block)
+  timeout_ms: 150
+
+response:
+  messages:
+    default: "The request was blocked by the gateway's content policy."
+    unavailable: "A required safety check is temporarily unavailable. Retry later."
+    output_blocked: "The response was withheld by the gateway's content policy."
+
+input:
+  placeholder_hint: true
+  allow_unredacted_upstream: false   # must be true to put secrets/pii_regex/pii_ner in shadow or off
+  # pre: tiers 0-1, pii_ner dominates; parallel: the tier 2-3 probe, overlapped with the router and semantic cache
+  phase_deadline_ms: {pre: 500, parallel: 1200}
+  guards:
+    - guard: normalize
+      strip_invisible: true
+      inspect_nfkc: true
+      fold_confusables: true
+      decode: {base64: true, hex: true, min_len: 24, max_depth: 2, min_printable: 0.9}
+      flag_invisible_ratio: 0.02
+      max_scan_chars: 32000
+      on_oversize: flag
+      on_error: block
+
+    - guard: injection_rules
+      pack: rules/injection.v1.yaml
+      roles: [user, assistant, tool]
+      block_tags: [instruction_override_strong, prompt_exfil, delimiter_spoof]
+      on_error: block
+
+    - guard: secrets
+      pack: rules/secrets.v1.yaml
+      action: redact                 # redact | block
+      entropy: {threshold: 4.5, min_len: 20}
+      on_error: block
+
+    - guard: pii_regex
+      entities:
+        EMAIL_ADDRESS: redact
+        PHONE_NUMBER: redact
+        CREDIT_CARD: redact
+        IBAN_CODE: redact
+        IP_ADDRESS: redact
+        US_SSN: block
+      allow_values: ["user@example.com", "4242 4242 4242 4242", "127.0.0.1", "0.0.0.0"]
+      on_error: block
+
+    # presidio + spacy en_core_web_sm next to pii_regex; spans merge into the same placeholders
+    - guard: pii_ner
+      entities:
+        PERSON: "off"                  # opt-in (strict override): redacting names breaks "who was ada lovelace?"
+        LOCATION: "off"
+        PHONE_NUMBER: redact           # context-boosted regional formats pii_regex misses
+        US_PASSPORT: redact
+        UK_PASSPORT: redact
+        US_DRIVER_LICENSE: redact
+        US_ITIN: redact
+        US_BANK_NUMBER: redact
+        UK_NHS: redact
+        UK_NINO: redact
+        CRYPTO: redact
+        DATE_OF_BIRTH: redact
+        STREET_ADDRESS: redact
+        UK_SORT_CODE: redact
+      allow_values: ["user@example.com", "4242 4242 4242 4242", "127.0.0.1", "0.0.0.0"]
+      min_score: 0.5
+      max_scan_chars: 8000           # p99 89 ms at 4k chars on an m-series core
+      timeout_ms: 400
+      on_error: block
+
+    # tier 2: runs in the guard probe on normalised, un-redacted text, concurrently with the router and semantic cache
+    # hosted promptguard.co detector (GG_PROMPTGUARD_API_KEY): injection, jailbreak, exfiltration, leaks.
+    # fails to the local rule pack above rather than closed: the free plan allows 60 rpm / 20k a month
+    - guard: promptguard
+      block_threats: [prompt_injection, system_prompt_leak, data_exfiltration, multi_turn_escalation, malware,
+                      api_key_leak, secret_key_leak]
+      timeout_ms: 1000
+      on_error: flag
+
+    - guard: topic
+      mode: shadow
+      deny:
+        medical_dosage:
+          threshold: 0.80
+          exemplars:
+            - "how many milligrams of this medication can I safely take at once"
+            - "what dose of a sleeping pill would be dangerous"
+            - "how much of this painkiller should I give my child"
+            - "is it safe to double my prescribed dose of antidepressants"
+            - "what is the maximum amount of paracetamol I can take in a day"
+        weapons_manufacture:
+          threshold: 0.80
+          exemplars:
+            - "step by step instructions to build a firearm at home"
+            - "how do I make an explosive device from household items"
+            - "how to 3d print an untraceable gun"
+            - "what chemicals do I mix to make a bomb"
+            - "how can I convert a semi-automatic rifle to fully automatic"
+      timeout_ms: 150
+      on_error: flag
+
+output:
+  streaming:
+    mode: windowed                   # windowed | buffer
+    first_window_chars: 40
+    window_chars: 200
+    overlap_chars: 50
+    holdback_max_chars: 64
+    abort: graceful                  # graceful (finish_reason=content_filter) | error_frame
+    tool_args_guards: [secrets_out, pii_leak]
+  guards:
+    - guard: secrets_out
+      pack: rules/secrets.v1.yaml
+      action: redact
+      on_error: block
+
+    - guard: pii_leak
+      entities: [EMAIL_ADDRESS, PHONE_NUMBER, CREDIT_CARD, IBAN_CODE, US_SSN, IP_ADDRESS]
+      action: redact
+      ignore_vault_values: true
+      allow_values: ["user@example.com", "4242 4242 4242 4242", "127.0.0.1", "0.0.0.0"]
+
+    - guard: json_schema
+      when: {has_response_format: true}
+      on_invalid: flag
+
+    - guard: toxicity
+      model: granite-guardian-hap-38m
+      block_at: 0.95
+      flag_at: 0.70
+      timeout_ms: 300                  # ~3 ms per stream window; whole non-stream replies take longer
+      on_error: flag
+
+    # post-hoc second opinion on finished replies (toxicity, leaks); flag only, sampled to respect the quota
+    - guard: promptguard_output
+      mode: shadow
+      sample_rate: 0.2
+      timeout_ms: 1500
+      on_error: allow
+
+    - guard: grounding
+      mode: "off"                      # hhem-2.1-open, ~420 mb; post-hoc flag only when enabled
+      model: hhem-2.1-open
+      context_roles: [system, developer, tool]
+      flag_below: 0.50
+      max_sentences: 12
+      on_error: allow
+
+    - guard: pii_restore
+
+overrides:
+  - name: internal-dev-shadow
+    match: {key_tags_any: [internal-dev]}
+    patch:
+      input.guards.injection_rules.mode: shadow
+      input.guards.promptguard.mode: shadow
+  - name: loadtest-no-remote
+    match: {key_tags_any: [loadtest]}
+    patch:
+      input.guards.promptguard.mode: "off"
+      output.guards.promptguard_output.mode: "off"
+  - name: strict-pii
+    match: {key_tags_any: [strict]}
+    patch:
+      input.guards.pii_ner.entities.PERSON: redact
+  - name: strict-output
+    match: {key_tags_any: [strict]}
+    patch:
+      output.streaming.mode: buffer
+      output.guards.json_schema.on_invalid: block
+
+tightening:
+  allow_request: true
