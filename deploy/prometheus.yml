@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 5s
+  evaluation_interval: 15s
+
+# docker-compose mounts deploy/prometheus/ here; a glob that matches nothing is not an error
+rule_files:
+  - /etc/prometheus/rules/*.yml
+
+scrape_configs:
+  - job_name: gg
+    metrics_path: /metrics
+    # hosted: set GG_METRICS__BEARER_TOKEN on the gateway and add authorization.credentials_file here
+    static_configs:
+      - targets: ["gateway:8000"]
+        labels: {source: compose}
+      - targets: ["host.docker.internal:8000"]
+        labels: {source: host}
+
+  - job_name: prometheus
+    static_configs:
+      - targets: ["localhost:9090"]

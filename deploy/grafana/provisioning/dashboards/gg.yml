@@ -1,0 +1,10 @@
+apiVersion: 1
+
+providers:
+  - name: gg
+    folder: GG
+    type: file
+    allowUiUpdates: false
+    disableDeletion: true
+    options:
+      path: /var/lib/grafana/dashboards
