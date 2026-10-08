@@ -82,8 +82,15 @@ class MockJev:
         self._body = jev_body(strong_mass)
         self._delay = delay_s
         self.requests: list[httpx2.Request] = []
+        self.other: list[httpx2.Request] = []
 
     async def __call__(self, request: httpx2.Request) -> httpx2.Response:
+        questions = json.loads(request.content)["questions"]
+        if "tier" not in questions:
+            # the injection guard and the cache verifier ask jev too; answer "no" to every question
+            self.other.append(request)
+            answers = {name: {"type": "noul", "noul": 0.0} for name in questions}
+            return httpx2.Response(200, json={"model": "jev-1.13.0", "answers": answers})
         self.requests.append(request)
         await asyncio.sleep(self._delay)
         return httpx2.Response(200, json=self._body, headers={"x-typesafe-request-id": "req_mock"})
@@ -133,9 +140,10 @@ async def test_jev_timeout_fails_open_to_strong(tmp_path: Path) -> None:
     assert "x-gg-route-score" not in headers
 
 
-async def test_non_router_models_never_call_jev(tmp_path: Path) -> None:
+async def test_non_router_models_never_ask_jev_to_route(tmp_path: Path) -> None:
     jev = MockJev()
     async with gg_client(config_dir(tmp_path, 0.5), jev) as oai:
         raw = await oai.chat.completions.with_raw_response.create(model="gg/weak", messages=MESSAGES)
     assert raw.headers["x-gg-route-reason"] == "alias"
     assert jev.requests == []
+    assert [list(json.loads(r.content)["questions"]) for r in jev.other] == [["injection"]]

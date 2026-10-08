@@ -20,6 +20,7 @@ from gg.auth.store import YamlKeyStore
 from gg.cache.config import CacheConfig
 from gg.cache.embedders import build_embedder
 from gg.cache.setup import BuiltCache, build_cache
+from gg.cache.verifiers import build_verifier
 from gg.config.hashing import combined_hash
 from gg.config.loader import ConfigFile, CrossValidator, load_bundle
 from gg.config.settings import Settings
@@ -167,11 +168,11 @@ def _auth_failure_limiter(settings: Settings, redis: Redis | None, clock: Clock)
 
 
 def _remote_detectors(settings: Settings, http: HttpClientFactory) -> RemoteClients | None:
-    keys = (
-        {"promptguard": settings.promptguard_api_key.get_secret_value()}
-        if settings.promptguard_api_key
-        else {}
-    )
+    keys: dict[str, str] = {}
+    if settings.promptguard_api_key:
+        keys["promptguard"] = settings.promptguard_api_key.get_secret_value()
+    if settings.jev_api_key:
+        keys["jev"] = settings.jev_api_key.get_secret_value()
     return RemoteClients(client=http.client, api_keys=keys) if keys else None
 
 
@@ -257,6 +258,7 @@ def build_app(settings: Settings | None = None, *, overrides: Overrides | None =
         if settings.redis_url
         else None
     )
+    jev_key = settings.jev_api_key.get_secret_value() if settings.jev_api_key else None
     cache = build_cache(
         cache_config,
         redis=redis,
@@ -265,6 +267,9 @@ def build_app(settings: Settings | None = None, *, overrides: Overrides | None =
         embedder=embedder,
         pricer=_cache_pricer(catalog, costs, clock),
         metrics_hooks=CacheMetrics(metrics),
+        verifier=build_verifier(
+            cache_config.semantic.verifier, lambda base_url: http.client("jev", base_url), jev_key
+        ),
     )
     limits = build_limits(
         bundle.section(LimitsConfig),
@@ -275,7 +280,6 @@ def build_app(settings: Settings | None = None, *, overrides: Overrides | None =
         estimate_prompt=estimate_prompt_tokens,
         metrics_hooks=LimitsMetrics(metrics),
     )
-    jev_key = settings.jev_api_key.get_secret_value() if settings.jev_api_key else None
     router = build_router(
         bundle.section(RoutingConfig),
         RouterDeps(
