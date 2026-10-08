@@ -14,6 +14,7 @@ from gg.cache.base import (
     NullCacheHooks,
     Pricer,
     SemanticIndex,
+    SemanticVerifier,
 )
 from gg.cache.codec import Codec
 from gg.cache.config import CacheConfig
@@ -73,6 +74,7 @@ def build_cache(
     metrics_hooks: CacheHooks | None = None,
     pricer: Pricer | None = None,
     alias_revision: AliasRevision | None = None,
+    verifier: SemanticVerifier | None = None,
 ) -> BuiltCache:
     """without redis, process-local backends (dev and tests); semantic needs an embedder and FT.* or memory"""
     hooks = metrics_hooks if metrics_hooks is not None else NullCacheHooks()
@@ -116,9 +118,19 @@ def build_cache(
         index=index,
     )
     probe = None
-    if index is not None and sem_embedder is not None:
+    if config.semantic.verifier.type != "none" and verifier is None:
+        # the threshold is tuned for verified matches, so without the verifier nothing is served
+        log.warning("cache.semantic_lookup_disabled", reason="the configured verifier is not available")
+    elif index is not None and sem_embedder is not None:
         probe = SemanticCacheProbe(
-            config, cache, index=index, embedder=sem_embedder, responder=responder, hooks=hooks, clock=clock
+            config,
+            cache,
+            index=index,
+            embedder=sem_embedder,
+            responder=responder,
+            hooks=hooks,
+            clock=clock,
+            verifier=verifier,
         )
     embedder_id = f"{sem_embedder.name}:{sem_embedder.dim}" if sem_embedder is not None else "none"
     digest = combined_hash({"config": section_hash(config), "embedder": embedder_id})

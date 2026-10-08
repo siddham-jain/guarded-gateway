@@ -92,9 +92,10 @@ class RedisVectorIndex:
             "B",
             pack(vector),
             "RETURN",
-            "2",
+            "3",
             "dist",
             "exact_key",
+            "text",
             "SORTBY",
             "dist",
             "LIMIT",
@@ -105,11 +106,14 @@ class RedisVectorIndex:
         )
         return parse_search(raw)
 
-    async def add(self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, /) -> None:
+    async def add(
+        self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, text: str, /
+    ) -> None:
         key = self.prefix + sha256_hex(exact_key)[:32]
         fields: dict[FieldT, EncodableT] = {
             **tags.as_dict(),
             "exact_key": exact_key,
+            "text": text,
             "vec": pack(vector),
         }
         async with self._redis.pipeline(transaction=False) as pipe:
@@ -137,4 +141,6 @@ def parse_search(raw: Any) -> SemanticMatch | None:
         fields = {_text(flat[i]): _text(flat[i + 1]) for i in range(0, len(flat) - 1, 2)}
     if "exact_key" not in fields or "dist" not in fields:
         return None
-    return SemanticMatch(exact_key=fields["exact_key"], distance=float(fields["dist"]))
+    return SemanticMatch(
+        exact_key=fields["exact_key"], distance=float(fields["dist"]), text=fields.get("text")
+    )

@@ -4,7 +4,17 @@ import asyncio
 
 import structlog
 
-from gg.cache.base import CachedResponse, CacheHooks, Embedder, Layer, LookupResult, Pricer, SemanticIndex
+from gg.cache.base import (
+    CachedResponse,
+    CacheHooks,
+    Embedder,
+    Layer,
+    LookupResult,
+    Pricer,
+    SemanticIndex,
+    SemanticMatch,
+    SemanticVerifier,
+)
 from gg.cache.config import CacheConfig
 from gg.cache.failopen import FailOpenCache
 from gg.cache.keys import CacheKeyBuilder, semantic_text
@@ -193,11 +203,13 @@ class SemanticCacheProbe:
         responder: HitResponder,
         hooks: CacheHooks,
         clock: Clock,
+        verifier: SemanticVerifier | None = None,
     ) -> None:
         self._cfg = cfg
         self._cache = cache
         self._index = index
         self._embedder = embedder
+        self._verifier = verifier
         self._responder = responder
         self._hooks = hooks
         self._clock = clock
@@ -208,11 +220,14 @@ class SemanticCacheProbe:
             return Annotate()
         start = self._clock.monotonic()
         try:
+            text = semantic_text(ctx.scrubbed or ctx.request)
             async with asyncio.timeout(self._cfg.semantic.deadline_s):
-                vector = (await self._embedder.embed([semantic_text(ctx.scrubbed or ctx.request)]))[0]
+                vector = (await self._embedder.embed([text]))[0]
                 match = await self._index.search(vector, plan.key.tags)
                 within = match is not None and match.distance <= plan.decision.threshold
                 entry = await self._cache.get(match.exact_key) if match is not None and within else None
+            if match is not None and entry is not None and not await self._verified(match, text):
+                entry = None
         except TimeoutError:
             self._hooks.lookup("semantic", "timeout")
             return Annotate()
@@ -224,10 +239,22 @@ class SemanticCacheProbe:
             self._hooks.lookup_duration("semantic", self._clock.monotonic() - start)
 
         if match is not None:
-            self._hooks.semantic_distance("hit" if within else "miss", match.distance)
+            self._hooks.semantic_distance("hit" if within and entry is not None else "miss", match.distance)
         if match is None or entry is None or not self._responder.resolvable(ctx, entry):
             self._hooks.lookup("semantic", "miss")
             return Annotate(apply=lambda c: c.set(SEMANTIC_VECTOR, vector))
         self._hooks.lookup("semantic", "hit")
         distance = match.distance
         return ShortCircuit(lambda c: self._responder.serve(c, entry, "semantic", distance))
+
+    async def _verified(self, match: SemanticMatch, text: str) -> bool:
+        if self._verifier is None or match.text == text:
+            return True
+        if match.text is None:
+            return False
+        try:
+            return await self._verifier.same_answer(match.text, text)
+        except Exception as exc:
+            # an unverified match is never served
+            log.warning("cache.semantic_verify_failed", error=type(exc).__name__)
+            return False

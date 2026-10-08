@@ -4,6 +4,7 @@ from typing import Any
 
 import pytest
 
+from gg.cache.config import CacheConfig
 from gg.cache.embedders.hashing import HashingEmbedder
 from gg.cache.setup import BuiltCache
 from gg.core.clock import FakeClock
@@ -202,3 +203,60 @@ async def test_semantic_scope_isolation() -> None:
     await go(p, other)
     assert other.cache_status == "miss"
     assert upstream.calls == 2
+
+
+class Verifier:
+    def __init__(self, answer: bool | Exception) -> None:
+        self.answer = answer
+        self.asked: list[tuple[str, str]] = []
+
+    async def same_answer(self, cached_prompt: str, new_prompt: str, /) -> bool:
+        self.asked.append((cached_prompt, new_prompt))
+        if isinstance(self.answer, Exception):
+            raise self.answer
+        return self.answer
+
+
+async def paraphrase_with(verifier: Verifier) -> tuple[PipelineResult, Upstream, RecordingHooks]:
+    hooks = RecordingHooks()
+    cache = built(embedder=CountingEmbedder(), hooks=hooks, clock=FakeClock(), verifier=verifier)
+    upstream = Upstream(response("Paris."))
+    p = pipeline(cache, upstream)
+    await go(p, ask(ANCHOR))
+    return await go(p, ask("What is the capital city of France?")), upstream, hooks
+
+
+async def test_a_verified_match_is_served() -> None:
+    verifier = Verifier(True)
+    result, upstream, _ = await paraphrase_with(verifier)
+    assert result.source == "semantic_cache"
+    assert upstream.calls == 1
+    assert verifier.asked == [(ANCHOR, "What is the capital city of France?")]
+
+
+@pytest.mark.parametrize("answer", [False, RuntimeError("jev is down")])
+async def test_a_match_the_verifier_rejects_or_cannot_judge_goes_upstream(answer: bool | Exception) -> None:
+    result, upstream, hooks = await paraphrase_with(Verifier(answer))
+    assert result.source == "upstream"
+    assert upstream.calls == 2
+    assert ("semantic", "miss") in hooks.lookups
+    assert hooks.distances[-1][0] == "miss"
+
+
+async def test_the_verifier_is_not_asked_outside_the_threshold() -> None:
+    verifier = Verifier(True)
+    cache = built(embedder=CountingEmbedder(), clock=FakeClock(), verifier=verifier)
+    p = pipeline(cache, Upstream())
+    await go(p, ask(ANCHOR))
+    await go(p, ask("How do I undo the last git commit?"))
+    assert verifier.asked == []
+
+
+def test_a_configured_verifier_that_is_missing_disables_semantic_lookups() -> None:
+    semantic = {
+        "embedder": {"provider": "hashing", "name": "hashing", "dim": 64},
+        "verifier": {"type": "jev"},
+    }
+    cfg = CacheConfig.model_validate({"semantic": semantic})
+    assert built(cfg, embedder=CountingEmbedder()).semantic_probe is None
+    assert built(cfg, embedder=CountingEmbedder(), verifier=Verifier(True)).semantic_probe is not None

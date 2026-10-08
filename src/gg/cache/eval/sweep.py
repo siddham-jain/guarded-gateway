@@ -1,10 +1,11 @@
 """threshold sweep (C8 §8.2): pair distances via the production tags and index code, then per-τ counts"""
 
+import asyncio
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from typing import Any
 
-from gg.cache.base import Embedder, SemanticTags
+from gg.cache.base import Embedder, SemanticTags, SemanticVerifier
 from gg.cache.eval.pairs import Pair
 from gg.cache.keys import number_signature
 from gg.cache.memory import InMemoryIndex
@@ -18,6 +19,9 @@ class Scored:
     pair: Pair
     # None when the tag pre-filter (num_sig) already rules the candidate out
     distance: float | None
+    # the verifier's answer for candidates inside the threshold; None when it was not asked
+    verified: bool | None = None
+    verify_failed: bool = False
 
 
 def thresholds(start: float = 0.0, stop: float = 0.30, step: float = 0.005) -> list[float]:
@@ -37,10 +41,30 @@ async def score_pairs(pairs: Sequence[Pair], embedder: Embedder, *, num_sig: boo
     out: list[Scored] = []
     for i, pair in enumerate(pairs):
         anchor, candidate = vectors[2 * i], vectors[2 * i + 1]
-        await index.add(anchor, _tags(pair, pair.anchor, num_sig), pair.id, 3600)
+        await index.add(anchor, _tags(pair, pair.anchor, num_sig), pair.id, 3600, pair.anchor)
         match = await index.search(candidate, _tags(pair, pair.candidate, num_sig))
         out.append(Scored(pair, None if match is None else match.distance))
     return out
+
+
+async def verify_pairs(scored: Sequence[Scored], verifier: SemanticVerifier, tau: float) -> list[Scored]:
+    """asks the verifier only where production would: candidates inside the threshold; an error is a miss"""
+
+    async def one(s: Scored) -> Scored:
+        if s.distance is None or s.distance > tau:
+            return s
+        try:
+            return replace(s, verified=await verifier.same_answer(s.pair.anchor, s.pair.candidate))
+        except Exception:
+            return replace(s, verified=False, verify_failed=True)
+
+    limit = asyncio.Semaphore(4)
+
+    async def bounded(s: Scored) -> Scored:
+        async with limit:
+            return await one(s)
+
+    return list(await asyncio.gather(*(bounded(s) for s in scored)))
 
 
 def _ratio(num: int, den: int) -> float | None:
@@ -51,7 +75,7 @@ def confusion(scored: Sequence[Scored], tau: float) -> dict[str, Any]:
     tp = fp = fn = tn = 0
     false_hits: dict[str, int] = {}
     for s in scored:
-        hit = s.distance is not None and s.distance <= tau
+        hit = s.distance is not None and s.distance <= tau and s.verified is not False
         if s.pair.should_hit:
             tp, fn = (tp + 1, fn) if hit else (tp, fn + 1)
         elif hit:

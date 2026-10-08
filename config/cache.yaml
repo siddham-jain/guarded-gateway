@@ -17,7 +17,10 @@ exact:
 semantic:
   enabled: true
   embedder: {provider: fastembed, name: BAAI/bge-small-en-v1.5, dim: 384}
-  distance_threshold: 0.08          # starting point; to be tuned by the evals/cache sweep (precision >= 0.98)
+  # embeddings alone reach ~0.65 precision at any useful threshold (entity swaps and negations sit closer
+  # than real paraphrases), so the threshold only picks candidates and jev confirms each one before it is served
+  distance_threshold: 0.15
+  verifier: {type: jev, min_score: 0.8, deadline_s: 0.6}   # needs GG_JEV_API_KEY; without it nothing is served
   deadline_s: 0.15                  # embed + search; slower counts as a miss
   min_user_chars: 8
   max_user_chars: 1200

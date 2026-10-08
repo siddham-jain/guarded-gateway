@@ -141,6 +141,8 @@ class CacheBackend(ResponseCache, SingleFlight, Protocol):
 class SemanticMatch:
     exact_key: str
     distance: float
+    # the scrubbed prompt the entry was stored for; None on entries written before it was kept
+    text: str | None = None
 
 
 class SemanticIndex(Protocol):
@@ -152,8 +154,16 @@ class SemanticIndex(Protocol):
         ...
 
     async def add(
-        self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, /
+        self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, text: str, /
     ) -> None: ...
+
+
+class SemanticVerifier(Protocol):
+    """second opinion on a vector match: embeddings rank entity swaps and negations as near-duplicates"""
+
+    async def same_answer(self, cached_prompt: str, new_prompt: str, /) -> bool:
+        """true iff the cached answer also answers the new prompt; may raise, which callers treat as a miss"""
+        ...
 
 
 @runtime_checkable

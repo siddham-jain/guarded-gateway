@@ -24,9 +24,10 @@ ROOT = Path(__file__).resolve().parents[3]
 PAIRS = ROOT / "evals" / "cache" / "pairs.jsonl"
 
 
-def test_repo_config_loads_and_starts_at_the_documented_threshold() -> None:
+def test_repo_config_pairs_the_wide_threshold_with_the_verifier() -> None:
     cfg = load_file(ROOT / "config" / "cache.yaml", CacheConfig)
-    assert cfg.semantic.distance_threshold == pytest.approx(0.08)
+    assert cfg.semantic.distance_threshold == pytest.approx(0.15)
+    assert cfg.semantic.verifier.type == "jev"
     assert cfg.semantic.embedder.dim == 384
 
 

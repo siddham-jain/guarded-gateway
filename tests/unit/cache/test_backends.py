@@ -128,12 +128,12 @@ def tags(scope: str = "s", num_sig: str = "n") -> SemanticTags:
 async def test_memory_index_nearest_with_tag_isolation_and_ttl() -> None:
     clock = FakeClock()
     index = InMemoryIndex(clock)
-    await index.add([1.0, 0.0], tags(), "near", 60)
-    await index.add([0.0, 1.0], tags(), "far", 60)
-    await index.add([1.0, 0.0], tags(scope="other"), "foreign", 60)
+    await index.add([1.0, 0.0], tags(), "near", 60, "near prompt")
+    await index.add([0.0, 1.0], tags(), "far", 60, "far prompt")
+    await index.add([1.0, 0.0], tags(scope="other"), "foreign", 60, "foreign prompt")
     match = await index.search([0.9, 0.1], tags())
     assert match is not None
-    assert match.exact_key == "near"
+    assert (match.exact_key, match.text) == ("near", "near prompt")
     assert match.distance == pytest.approx(cosine_distance([0.9, 0.1], [1.0, 0.0]))
     assert await index.search([1.0, 0.0], tags(scope="nobody")) is None
     assert await index.search([1.0, 0.0], tags(num_sig="different")) is None

@@ -200,10 +200,11 @@ class CacheWriter:
         if self._index is None or self._embedder is None:
             return
         try:
+            text = semantic_text(ctx.scrubbed or ctx.request)
             vector = ctx.get(SEMANTIC_VECTOR)
             if vector is None:
-                vector = (await self._embedder.embed([semantic_text(ctx.scrubbed or ctx.request)]))[0]
-            await self._index.add(vector, plan.key.tags, plan.key.redis_key, plan.decision.ttl_s)
+                vector = (await self._embedder.embed([text]))[0]
+            await self._index.add(vector, plan.key.tags, plan.key.redis_key, plan.decision.ttl_s, text)
         except Exception as exc:
             log.warning("cache.semantic_store_failed", error=type(exc).__name__)
             self._hooks.store("semantic", "error", "backend")

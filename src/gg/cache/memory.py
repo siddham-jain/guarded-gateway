@@ -97,7 +97,7 @@ class InMemoryIndex:
 
     def __init__(self, clock: Clock) -> None:
         self._clock = clock
-        self._entries: dict[str, tuple[tuple[float, ...], SemanticTags, float]] = {}
+        self._entries: dict[str, tuple[tuple[float, ...], SemanticTags, float, str]] = {}
 
     @property
     def available(self) -> bool:
@@ -109,7 +109,7 @@ class InMemoryIndex:
     async def search(self, vector: Sequence[float], tags: SemanticTags, /) -> SemanticMatch | None:
         now = self._clock.monotonic()
         best: SemanticMatch | None = None
-        for exact_key, (stored, stored_tags, expires) in list(self._entries.items()):
+        for exact_key, (stored, stored_tags, expires, text) in list(self._entries.items()):
             if expires <= now:
                 del self._entries[exact_key]
                 continue
@@ -117,8 +117,10 @@ class InMemoryIndex:
                 continue
             distance = cosine_distance(vector, stored)
             if best is None or distance < best.distance:
-                best = SemanticMatch(exact_key=exact_key, distance=distance)
+                best = SemanticMatch(exact_key=exact_key, distance=distance, text=text)
         return best
 
-    async def add(self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, /) -> None:
-        self._entries[exact_key] = (tuple(vector), tags, self._clock.monotonic() + ttl_s)
+    async def add(
+        self, vector: Sequence[float], tags: SemanticTags, exact_key: str, ttl_s: int, text: str, /
+    ) -> None:
+        self._entries[exact_key] = (tuple(vector), tags, self._clock.monotonic() + ttl_s, text)

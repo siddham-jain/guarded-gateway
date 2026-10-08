@@ -32,11 +32,23 @@ class EmbedderConfig(StrictModel):
     dim: PositiveInt = 384
 
 
+class VerifierConfig(StrictModel):
+    """jev answers "would the cached answer also answer this prompt?" for matches inside the threshold"""
+
+    type: Literal["none", "jev"] = "none"
+    url: str = "https://api.typesafe.ai/v1/systemone"
+    model: str = "jev-1.13.0"
+    min_score: Annotated[float, Field(ge=0, le=1)] = 0.8
+    deadline_s: Annotated[float, Field(gt=0, le=5)] = 0.6
+
+
 class SemanticConfig(StrictModel):
     enabled: bool = True
     embedder: EmbedderConfig = EmbedderConfig()
+    verifier: VerifierConfig = VerifierConfig()
     # cosine distance; a request may only tighten it via gg.cache_threshold
     distance_threshold: Annotated[float, Field(ge=0, le=2)] = 0.08
+    # embed + search only; the verifier has its own deadline
     deadline_s: Annotated[float, Field(gt=0, le=5)] = 0.15
     min_user_chars: PositiveInt = 8
     max_user_chars: PositiveInt = 1200
