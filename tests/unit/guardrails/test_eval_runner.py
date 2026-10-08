@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -55,7 +56,12 @@ def run(
 
 
 def test_runner_reports_rates_with_cis_and_passes_against_the_baseline(tmp_path: Path) -> None:
-    code, result = run(tmp_path)
+    # the rule-only cli catches every example item; the full set needs the gate's jev recording and models
+    examples = tmp_path / "items"
+    examples.mkdir()
+    for name in ("input-examples.yaml", "output-examples.yaml"):
+        shutil.copy(ITEMS / name, examples / name)
+    code, result = run(tmp_path, items=examples)
     assert code == 0
     assert result["schema_version"] == 1
     assert result["suite"] == "guardrails"

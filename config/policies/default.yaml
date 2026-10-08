@@ -2,7 +2,7 @@
 # config_hash, the x-gg-policy header and the eval baseline. guard-specific fields sit next to the common ones
 # (mode, on_error, timeout_ms, sample_rate, when); unknown fields fail at startup.
 id: default
-version: 1.3.0
+version: 1.4.0
 description: baseline policy for all keys
 
 defaults:
@@ -79,19 +79,29 @@ input:
       on_error: block
 
     # tier 2: runs in the guard probe on normalised, un-redacted text, concurrently with the router and semantic cache
+    # jev answers one question about the recent turns (GG_JEV_API_KEY); ~320 ms p50, beside the router's own jev call
+    - guard: jev_injection
+      block_at: 0.8
+      flag_at: 0.5
+      timeout_ms: 1000
+      on_error: flag
+
     # hosted promptguard.co detector (GG_PROMPTGUARD_API_KEY): injection, jailbreak, exfiltration, leaks.
     # fails to the local rule pack above rather than closed: the free plan allows 60 rpm / 20k a month
     - guard: promptguard
+      mode: "off"                      # measured from india: 2.7 s p50 against a 1 s budget, 11 of 42 benign prompts blocked
       block_threats: [prompt_injection, system_prompt_leak, data_exfiltration, multi_turn_escalation, malware,
                       api_key_leak, secret_key_leak]
       timeout_ms: 1000
       on_error: flag
 
+    # flags only: on the eval set denied prompts score 0.77-0.78 and the closest benign one 0.61,
+    # which is too few examples to block on
     - guard: topic
-      mode: shadow
+      action: flag
       deny:
         medical_dosage:
-          threshold: 0.80
+          threshold: 0.70
           exemplars:
             - "how many milligrams of this medication can I safely take at once"
             - "what dose of a sleeping pill would be dangerous"
@@ -99,7 +109,7 @@ input:
             - "is it safe to double my prescribed dose of antidepressants"
             - "what is the maximum amount of paracetamol I can take in a day"
         weapons_manufacture:
-          threshold: 0.80
+          threshold: 0.70
           exemplars:
             - "step by step instructions to build a firearm at home"
             - "how do I make an explosive device from household items"
@@ -143,17 +153,19 @@ output:
 
     # post-hoc second opinion on finished replies (toxicity, leaks); flag only, sampled to respect the quota
     - guard: promptguard_output
-      mode: shadow
+      mode: "off"                      # same latency as the input detector, so it never answers in time
       sample_rate: 0.2
       timeout_ms: 1500
       on_error: allow
 
     - guard: grounding
-      mode: "off"                      # hhem-2.1-open, ~420 mb; post-hoc flag only when enabled
+      mode: enforce                    # hhem-2.1-open, ~420 mb, loaded on first use; post-hoc, can only flag
       model: hhem-2.1-open
       context_roles: [system, developer, tool]
+      min_context_chars: 150           # shorter system text is an instruction, not a document to check against
       flag_below: 0.50
       max_sentences: 12
+      timeout_ms: 2000                 # off the request path; ~100 ms per sentence on one core
       on_error: allow
 
     - guard: pii_restore
@@ -163,10 +175,12 @@ overrides:
     match: {key_tags_any: [internal-dev]}
     patch:
       input.guards.injection_rules.mode: shadow
+      input.guards.jev_injection.mode: shadow
       input.guards.promptguard.mode: shadow
   - name: loadtest-no-remote
     match: {key_tags_any: [loadtest]}
     patch:
+      input.guards.jev_injection.mode: "off"
       input.guards.promptguard.mode: "off"
       output.guards.promptguard_output.mode: "off"
   - name: strict-pii

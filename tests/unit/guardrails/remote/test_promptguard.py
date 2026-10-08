@@ -1,4 +1,6 @@
+import shutil
 from collections.abc import AsyncIterator, Callable
+from pathlib import Path
 from typing import Any
 
 import httpx2
@@ -140,8 +142,16 @@ async def test_without_a_key_the_guard_is_unavailable_and_allows() -> None:
 
 
 @pytest.fixture
-async def app_with_promptguard() -> AsyncIterator[tuple[FastAPI, Recorder]]:
+async def app_with_promptguard(tmp_path: Path) -> AsyncIterator[tuple[FastAPI, Recorder]]:
     recorder = Recorder()
+    # the shipped policy keeps promptguard off (too slow from here); this app turns it back on
+    config = tmp_path / "config"
+    shutil.copytree(ROOT / "config", config)
+    policy = yaml.safe_load((config / "policies/default.yaml").read_text())
+    for entry in policy["input"]["guards"]:
+        if entry["guard"] == "promptguard":
+            entry["mode"] = "enforce"
+    (config / "policies/default.yaml").write_text(yaml.safe_dump(policy, sort_keys=False))
 
     def handler(request: httpx2.Request) -> httpx2.Response:
         text = loads(request.content)["messages"][0]["content"]
@@ -153,7 +163,7 @@ async def app_with_promptguard() -> AsyncIterator[tuple[FastAPI, Recorder]]:
         env="test",
         log_format="console",
         log_level="warning",
-        config_dir=ROOT / "config",
+        config_dir=config,
         keys_file=ROOT / "tests/fixtures/keys/keys.yaml",
         model_profile="ci",
         promptguard_api_key="pg_live_test",

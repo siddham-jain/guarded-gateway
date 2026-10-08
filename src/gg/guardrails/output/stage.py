@@ -18,6 +18,17 @@ from gg.pipeline.stage import Next, PipelineResult
 from gg.pipeline.streams import StreamAssembler, synthesize_chunks
 
 
+def posthoc_context(ctx: RequestContext, text: str) -> GuardContext:
+    return GuardContext(
+        stage="output",
+        request_id=ctx.request_id,
+        segments=(Segment(index=0, role="assistant", kind="content", msg=-1, text=text),),
+        request=ctx.request,
+        vault=request_vault(ctx),
+        key=ctx.key,
+    )
+
+
 class OutputGuardStage:
     """windowed checks on streams, full checks on non-stream responses, restore-only for cache hits"""
 
@@ -40,7 +51,7 @@ class OutputGuardStage:
             # cached output passed these guards when written; it only needs this request's own values back
             return self._restore_only(result, ctx, policy)
         if result.stream is not None:
-            if self._buffered(ctx, policy):
+            if self.buffered(ctx, policy):
                 return result.map_stream(lambda s: self._buffer(s, ctx, policy))
             guard = StreamGuard(self._engine, policy, ctx, clock=self._clock)
             return result.map_stream(guard.guard)
@@ -61,7 +72,7 @@ class OutputGuardStage:
         return result.map_response(lambda r: restore_response(r, finalize))
 
     @staticmethod
-    def _buffered(ctx: RequestContext, policy: EffectivePolicy) -> bool:
+    def buffered(ctx: RequestContext, policy: EffectivePolicy) -> bool:
         # buffer guards (json_schema) need the whole reply; an applicable one switches to buffer mode
         if policy.doc.output.streaming.mode == "buffer":
             return True
@@ -94,14 +105,7 @@ class OutputGuardStage:
         chain = policy.posthoc()
         if not chain or self._supervisor is None:
             return
-        gctx = GuardContext(
-            stage="output",
-            request_id=ctx.request_id,
-            segments=(Segment(index=0, role="assistant", kind="content", msg=-1, text=text),),
-            request=ctx.request,
-            vault=request_vault(ctx),
-            key=ctx.key,
-        )
+        gctx = posthoc_context(ctx, text)
 
         async def run() -> None:
             await self._engine.run(chain, gctx)

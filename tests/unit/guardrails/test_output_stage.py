@@ -163,9 +163,11 @@ async def test_without_an_effective_policy_the_stage_is_a_passthrough() -> None:
     assert await stage()(ctx, returning(original)) is original
 
 
-async def test_posthoc_hook_schedules_nothing_without_posthoc_guards() -> None:
+async def test_posthoc_hook_schedules_nothing_without_posthoc_guards(tmp_path: Path) -> None:
     supervisor = TaskSupervisor()
-    ctx = setup()
+    doc = policy_doc()
+    doc["output"]["guards"] = [g for g in doc["output"]["guards"] if g["guard"] != "grounding"]
+    ctx = setup(write_policy(tmp_path, doc))
     await stage(supervisor)(ctx, returning(PipelineResult(source="upstream", response=response("fine"))))
     assert len(supervisor) == 0
 

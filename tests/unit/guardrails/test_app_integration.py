@@ -86,7 +86,7 @@ async def test_pii_is_redacted_upstream_and_restored_for_the_client(
     assert raw.parse().choices[0].message.content == prompt
     assert raw.headers["x-gg-guardrails"] == "redacted"
     assert raw.headers["x-gg-redactions"] == "1"
-    assert raw.headers["x-gg-policy"].startswith("default@1.3.0+")
+    assert raw.headers["x-gg-policy"].startswith("default@1.4.0+")
 
 
 async def test_pii_round_trip_while_streaming(app: FastAPI, upstream_seen: list[str]) -> None:

@@ -98,10 +98,11 @@ async def test_builder_wires_probe_and_shares_one_model_per_id(cpu: CpuExecutor,
     # every override combination was built at startup, yet each model is registered once
     assert names == [
         "model:granite-guardian-hap-38m",
+        "model:hhem-2.1-open",
         "presidio:en_core_web_sm",
-        names[2],
+        names[3],
     ]
-    assert names[2].startswith("topic:fake-embedder:")
+    assert names[3].startswith("topic:fake-embedder:")
     assert (await guardrails.health.check()).status == "down"
 
 

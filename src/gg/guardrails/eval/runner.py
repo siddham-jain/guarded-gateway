@@ -3,6 +3,7 @@
 import os
 import platform
 import time
+from collections import Counter
 from collections.abc import AsyncIterator, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
@@ -21,10 +22,12 @@ from gg.guardrails.eval.items import ACTIONS, Action, EvalItem, items_digest
 from gg.guardrails.eval.stats import percentile, rate
 from gg.guardrails.fakes import FakeValues
 from gg.guardrails.output.runner import OutputGuardRunner
+from gg.guardrails.output.stage import OutputGuardStage, posthoc_context
 from gg.guardrails.output.stream_guard import StreamGuard
 from gg.guardrails.policy.effective import EffectivePolicy
 from gg.guardrails.policy.loader import PolicySet
-from gg.guardrails.stages import run_input
+from gg.guardrails.probe import GuardProbe
+from gg.guardrails.stages import EFFECTIVE_POLICY, INPUT_DECISION, run_input
 from gg.guardrails.vault import PLACEHOLDER_RE, GuardVault
 
 SUITE = "guardrails"
@@ -108,10 +111,18 @@ def _ctx(
 
 class GuardrailEval:
     def __init__(
-        self, policies: PolicySet, engine: GuardrailEngine, *, policy_id: str = "default", seed: int = 7
+        self,
+        policies: PolicySet,
+        engine: GuardrailEngine,
+        *,
+        policy_id: str = "default",
+        seed: int = 7,
+        probe: GuardProbe | None = None,
     ) -> None:
         self._policies = policies
         self._engine = engine
+        # live runs only: the tier 2-3 guards (promptguard, topic) the gateway runs as a concurrent probe
+        self._probe = probe
         self._key = eval_key(policy_id)
         self._fakes = FakeValues(seed)
         self._clock: Clock = SystemClock()
@@ -128,13 +139,25 @@ class GuardrailEval:
         messages = [{"role": m.role, "content": item.expand(m.content, self._fakes)} for m in item.messages]
         request = ChatRequest.model_validate({"model": "gg/auto", "messages": messages})
         vault = GuardVault()
+        policy = self.policy(request)
         start = time.perf_counter()
         result = await run_input(
-            self._engine, self.policy(request), request, vault, request_id=f"eval-{item.id}", key=self._key
+            self._engine, policy, request, vault, request_id=f"eval-{item.id}", key=self._key
         )
+        # the gated latency is the pre phase only; the probe overlaps the router and is timed separately
         latency = (time.perf_counter() - start) * 1000
-        observed = _action(result.decision.verdict)
-        fired = sorted({f.guard for f in result.decision.findings if f.would_verdict > Verdict.ALLOW})
+        findings = list(result.decision.findings)
+        verdict = result.decision.verdict
+        if self._probe is not None and not result.decision.blocked:
+            ctx = _ctx(request, self._key, self._clock, f"eval-{item.id}", vault)
+            ctx.set(EFFECTIVE_POLICY, policy)
+            ctx.set(INPUT_DECISION, result.decision)
+            parallel = await self._probe.decide(ctx)
+            if parallel is not None:
+                findings += parallel.findings
+                verdict = max(verdict, parallel.verdict)
+        observed = _action(verdict)
+        fired = sorted({f.guard for f in findings if f.would_verdict > Verdict.ALLOW})
         upstream = "\n".join(m.text() for m in result.upstream.messages)
         spans_ok = all(
             self._fakes.expand(r.text) not in upstream
@@ -142,7 +165,8 @@ class GuardrailEval:
             for r in item.expected.redactions
         )
         outcome = _score(item, observed, ok=spans_ok or observed == "block")
-        return ItemResult(item, observed, outcome, fired, latency, details={"redactions_ok": spans_ok})
+        details = {"redactions_ok": spans_ok, "guard_errors": _errors(findings)}
+        return ItemResult(item, observed, outcome, fired, latency, details=details)
 
     def _output_setup(self, item: EvalItem) -> tuple[RequestContext, EffectivePolicy]:
         payload: dict[str, Any] = {
@@ -180,35 +204,52 @@ class GuardrailEval:
         nonstream = _action(ctx.output_verdict.verdict if ctx.output_verdict else Verdict.ALLOW)
         nonstream_text = checked.response.choices[0].message.content or ""
         latency = (time.perf_counter() - start) * 1000
+        findings = [f for f in ctx.guard_findings if isinstance(f, GuardFinding)]
+        # the stage runs these after the reply has gone out; they can flag but never change it
+        posthoc = policy.posthoc()
+        late = await self._engine.run(posthoc, posthoc_context(ctx, checked.raw_text)) if posthoc else None
 
-        ctx, policy = self._output_setup(item)
-        released: list[str] = []
-        leaks: list[str] = []
         forbidden = [self._fakes.expand(f) for f in item.expected.must_not_release]
-        guard = StreamGuard(self._engine, policy, ctx, clock=self._clock)
-        async for chunk in guard.guard(_replay(chunks)):
-            for choice in chunk.choices:
-                released.append(choice.delta.content or "")
-                so_far = "".join(released)
-                leaks += [f for f in forbidden if f in so_far and f not in leaks]
-        streamed = _action(ctx.output_verdict.verdict if ctx.output_verdict else Verdict.ALLOW)
-        stream_text = "".join(released)
+        if OutputGuardStage.buffered(ctx, policy):
+            # a buffer guard (json_schema) applies: the stage assembles the stream and checks it whole
+            streamed, stream_text = nonstream, nonstream_text
+            leaks = [f for f in forbidden if f in stream_text]
+        else:
+            ctx, policy = self._output_setup(item)
+            released: list[str] = []
+            leaks = []
+            guard = StreamGuard(self._engine, policy, ctx, clock=self._clock)
+            async for chunk in guard.guard(_replay(chunks)):
+                for choice in chunk.choices:
+                    released.append(choice.delta.content or "")
+                    so_far = "".join(released)
+                    leaks += [f for f in forbidden if f in so_far and f not in leaks]
+            streamed = _action(ctx.output_verdict.verdict if ctx.output_verdict else Verdict.ALLOW)
+            stream_text = "".join(released)
+            findings = [f for f in ctx.guard_findings if isinstance(f, GuardFinding)]
         contains_ok = all(self._fakes.expand(c) in stream_text for c in item.expected.released_contains)
-        fired = sorted(
-            {f.guard for f in ctx.guard_findings if isinstance(f, GuardFinding) and f.would_verdict}
-        )
+        observed = streamed
+        if late is not None:
+            findings += late.findings
+            observed = ACTIONS[max(ACTIONS.index(streamed), int(late.verdict))]
+        fired = sorted({f.guard for f in findings if f.would_verdict})
         mismatch = nonstream != streamed
         ok = not leaks and contains_ok and not mismatch
-        outcome = _score(item, streamed, ok=ok)
+        outcome = _score(item, observed, ok=ok)
         if item.label == "benign" and not ok:
             outcome = "false_positive"
         details = {
+            "guard_errors": _errors(findings),
             "leak_free": not leaks,
             "released_contains_ok": contains_ok,
             "stream_mismatch": mismatch,
             "nonstream_equals_stream": nonstream_text == stream_text,
         }
-        return ItemResult(item, streamed, outcome, fired, latency, details=details)
+        return ItemResult(item, observed, outcome, fired, latency, details=details)
+
+
+def _errors(findings: Sequence[GuardFinding]) -> list[str]:
+    return sorted({f.guard for f in findings if f.error is not None})
 
 
 async def _replay(chunks: Sequence[str]) -> AsyncIterator[ChatChunk]:
@@ -305,6 +346,8 @@ def report(
         "cost": {"usd_spent": 0.0, "usd_cap": 0.0, "paid_calls": 0, "replayed_calls": 0},
         "metrics": metrics,
         "by_category": by_category,
+        # guards that could not decide (timeout, backend down), by item count; non-empty only on live runs
+        "guard_errors": dict(Counter(g for r in results for g in r.details.get("guard_errors", ()))),
         "items": [r.to_json() for r in results],
         "regressions": diff,
         "gates": gates,

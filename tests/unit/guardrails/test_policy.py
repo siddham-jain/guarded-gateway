@@ -34,6 +34,7 @@ def test_default_policy_loads_with_both_chains() -> None:
         "pii_leak",
         "json_schema",
         "toxicity",
+        "grounding",
         "pii_restore",
     ]
     assert eff.restorer is not None
@@ -42,7 +43,7 @@ def test_default_policy_loads_with_both_chains() -> None:
         "pii_leak",
         "toxicity",
     ]
-    assert eff.ref.header() == f"default@1.3.0+{eff.hash}"
+    assert eff.ref.header() == f"default@1.4.0+{eff.hash}"
     assert len(eff.hash) == 12
 
 
@@ -235,6 +236,7 @@ def test_default_yaml_is_the_documented_shape() -> None:
         "secrets",
         "pii_regex",
         "pii_ner",
+        "jev_injection",
         "promptguard",
         "topic",
     }
