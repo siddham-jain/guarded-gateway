@@ -5,11 +5,12 @@ API over 25+ providers, plus what a plain proxy does not give you:
 
 - **Intelligent routing.** For `gg/auto`, Jev (TypeSafe's "system one" classifier) scores each prompt and GG sends it
   to the weak or the strong model. One knob, α, trades cost for quality.
-- **Guardrails** on the way in and out: rule packs, secrets and PII detection, hosted PromptGuard for prompt
-  injection, local ONNX models for toxicity, topic and grounding. Shadow mode lets a new guard log without blocking.
+- **Guardrails** on the way in and out: rule packs, secrets and PII detection, a Jev-based prompt-injection
+  detector, local ONNX models for toxicity, topic and grounding. Shadow mode lets a new guard log without blocking.
 - **Reversible PII redaction.** PII becomes placeholders (`[EMAIL_1]`) before anything leaves GG; the reply gets the
-  real values back. Jev, PromptGuard and the caches only ever see placeholders.
-- **Exact and semantic caching** (Redis 8 vector search), with cached streams replayed as SSE.
+  real values back. Jev and the caches only ever see placeholders.
+- **Exact and semantic caching** (Redis 8 vector search), with cached streams replayed as SSE. A semantic match is
+  only served after Jev confirms the cached answer also answers the new prompt.
 - **Reliability**: retries, per-deployment circuit breakers and cross-provider fallback up to the first token.
 - **Per-key limits and budgets** (Redis Lua token bucket, micro-USD budgets) and a per-provider spend cap.
 - **Observability**: Prometheus + Grafana, a Langfuse trace per request, one structured log line per request, and
@@ -62,6 +63,41 @@ At the shipped α = 0.25: 30.6% of requests go strong, 82% of the quality gap be
 always-strong (0.953) is recovered, at 33% lower cost than always-strong. Random routing at the same share recovers
 31%. APGR is the area under the quality-vs-strong-share curve, normalised so random = 0.5 and perfect = 1.
 
+### Guardrails
+
+126 hand-written items ([evals/guardrails](evals/guardrails)): 60 attacks and leaks, 66 benign hard negatives,
+written without sight of the detection rules. Settings were tuned on the dev split only. Live run: every guard in
+the default policy, with the local models and the Jev API.
+
+| Split | Input attacks caught | Output leaks caught | Benign items stopped |
+|---|---|---|---|
+| dev (86 items) | 28 / 28 | 13 / 13 | 1 / 45 |
+| held-out (40 items) | 11 / 13 | 5 / 6 | 0 / 21 |
+
+- Rule packs alone catch 21 of the 41 dev attacks (6 of 19 held-out); the Jev injection detector and the local
+  models account for the rest.
+- The Jev detector caught 29 of 30 injection, jailbreak, obfuscation, indirect and multi-turn items with no
+  false blocks, at about 320 ms p50 beside the router's own Jev call. Hosted PromptGuard caught 28 of 30 but
+  blocked 11 of 42 benign prompts and took 2.7 s p50, so it ships switched off.
+- The three held-out misses: exfiltration framed as a translation task (flagged, not blocked), a weapons
+  request in German (the topic guard's embedder is English-only), and a harmful reply with no abusive wording.
+  The one false positive quotes an attack string in order to ask about it.
+
+### Semantic cache
+
+180 hand-written prompt pairs ([evals/cache](evals/cache/pairs.jsonl)): 73 paraphrases that should hit and 107
+near-misses that must not (entity swaps, changed numbers, negations, different format or scope).
+
+| Matcher | Held-out precision | Held-out hit rate |
+|---|---|---|
+| embedding distance alone, best threshold | 0.75 | 0.62 |
+| embedding candidate (distance ≤ 0.15) + Jev verification (shipped) | 29 / 29 = 1.00 | 29 / 29 = 1.00 |
+
+Embeddings rank "Celsius to Fahrenheit" against "Fahrenheit to Celsius" closer than most real paraphrases, so no
+threshold separates them. Verification costs one extra Jev call (about 325 ms) only when a candidate exists.
+Through the running gateway with Redis 8 and a live provider, 15 of 16 pairs behaved as labelled; the miss was
+a reply the output guard had redacted, which is never stored.
+
 ### Gateway overhead and throughput
 
 Locust against the mock upstream (TTFT 50 ms, 40 tokens), one uvicorn worker on an Apple M4 laptop
@@ -90,7 +126,8 @@ About 2,600 tests: unit, contract (every adapter against recorded provider fixtu
 injected 529s and timeouts), integration through the real app with the stock OpenAI SDK, and real Redis 8. CI
 ([.github/workflows/ci.yml](.github/workflows/ci.yml)) runs ruff, strict pyright, import-linter contracts, the test
 suite with a Redis service, and an eval gate that fails a PR when any guardrail or cache eval item regresses against
-its committed baseline ([docs/ci.md](docs/ci.md)).
+its committed baseline. The gate replays recorded Jev answers and embedding distances, so it needs no network
+([docs/ci.md](docs/ci.md)).
 
 ## Architecture
 

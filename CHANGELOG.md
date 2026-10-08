@@ -3,6 +3,10 @@
 ## [Unreleased]
 
 ### Added
+- Add Jev-verified semantic cache: the vector search proposes a candidate and Jev confirms it (held-out precision 29/29, hit rate 29/29).
+- Add `jev_injection` tier-2 guard (Jev noul question over the scrubbed recent turns) as the default injection detector.
+- Extend the guardrail eval set to 126 items and the cache pair set to 180, both with held-out splits.
+- Add `python -m gg.evalgate --live` (every guard, production embedder, Jev) and cassettes so ci replays the live run offline.
 - Add routing eval harness, 170-item hand-written routing set and live OpenRouter results (APGR 0.80 held-out).
 - Add Jev `score_signal` option (`strong_helps` default) and ship α = 0.25 from the routing eval.
 - Add OpenRouter deployments for gpt-6-luna, gpt-6.1-sol and Claude Haiku 4.5.
@@ -45,6 +49,8 @@
 - Add `plans/REVIEW.md` consistency review of the component plans.
 
 ### Changed
+- Turn hosted PromptGuard off, grounding on and the topic guard to flag at 0.70 in the default policy (1.4.0).
+- Guardrail eval runs the tier-2 probe, post-hoc guards and the buffered json path like the pipeline does.
 - Start guard and probe tasks eagerly — default-config overhead p99 113 → 75 ms, stream added ttft p50 81 → 58 ms.
 - Reconcile the 13 component plans with the master plan and with each other.
 
@@ -62,6 +68,11 @@
 - Remove local prompt-injection models (Prompt Guard 2, ProtectAI DeBERTa), their weights and export path; injection detection is PromptGuard's.
 
 ### Decisions
+- Semantic cache threshold 0.15 plus Jev verification — bge-small alone tops out near 0.7 precision at any threshold (entity swaps, negations and role swaps sit closer than real paraphrases); without the verifier nothing is served.
+- PromptGuard off by default — from India it takes 2.7 s p50 against a 1 s budget and blocked 11 of 42 benign eval prompts; Jev caught 29 of 30 attacks with no false blocks at ~320 ms.
+- Jev guard adds one Jev call to every request that passes tier 1 (not only `gg/auto`) — it overlaps the router and semantic probes, so `gg/auto` pays nothing extra and fixed-model requests wait ~320 ms before upstream.
+- Grounding on (flag only, post-hoc) costs ~100 ms cpu per sentence when the system or tool text is 150+ chars — turn it off per key tag if the shared cpu pool saturates under load.
+- Eval gate replays cassettes keyed by request hash — a changed item, pair or Jev question misses its entry and shows as a guard error until `--live` re-records.
 - Jev score uses `strong_helps`, chosen on the tune split — P(frontier tiers) is 0 for 107/170 prompts; held-out APGR 0.80 vs 0.65.
 - Signal is part of the Jev scorer version — an α is only valid for the signal it was tuned on.
 - PromptGuard has its own 0.9 s timeout and 3-failure breaker — the engine's timeout cancels the call, which can't be told apart from a probe cancellation.

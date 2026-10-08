@@ -20,8 +20,8 @@ flowchart TD
         subgraph GOUT[output guardrails wrap everything below]
             EX[exact cache lookup] -->|miss| PROBES
             subgraph PROBES[concurrent probes on the scrubbed request]
-                P1[tier 2 guards: PromptGuard, topic]
-                P2[semantic cache: embed and vector search]
+                P1[tier 2 guards: Jev injection detector, topic]
+                P2[semantic cache: embed, vector search, Jev verification]
                 P3[Jev router score, gg/auto only]
             end
             PROBES --> ROUTE[routing stage: alias or gg/auto to a RoutePlan]
@@ -41,9 +41,10 @@ executor, so cached replies are guarded and PII-restored like fresh ones.
 
 | Decision | Why |
 |---|---|
-| Redact PII and secrets before routing and caching | Jev and PromptGuard are third-party APIs; they and the caches only ever see placeholders like `[EMAIL_1]`. The original values live in a per-request vault and are restored in the reply. |
+| Redact PII and secrets before routing and caching | Jev is a third-party API; it and the caches only ever see placeholders like `[EMAIL_1]`. The original values live in a per-request vault and are restored in the reply. |
 | Router, tier-2 guards and semantic cache run concurrently | All three only read the prompt, so Jev's ~300 ms does not stack on guard latency. Precedence decides: a guard block beats a semantic hit, which beats the routing decision. |
-| Router fails open, security guards fail per policy | A Jev timeout or open breaker routes strong; PromptGuard outages fall back to the local rule pack instead of blocking traffic. |
+| Router fails open, security guards fail per policy | A Jev timeout or open breaker routes strong; if the Jev injection detector cannot answer, the request is flagged and the local rule pack still applies. |
+| Jev confirms every semantic cache match | Embedding distance cannot tell a paraphrase from an entity swap or a negation (0.63 precision on the pair set), so the vector search only proposes a candidate; an unverified match is never served. |
 | Commit point | Retries and fallback are only possible before the first content byte reaches the client. After that, an upstream failure becomes an in-stream error event. |
 | Work after the last byte | Cache writes, budget settlement, metrics, traces and the request log run as shielded finalizers, so they never add to latency. |
 
@@ -59,11 +60,11 @@ executor, so cached replies are guarded and PII-restored like fresh ones.
 | `gg.providers` | adapter contract, model catalog (canonical models, host deployments, groups, aliases), native and OpenAI-compatible adapters |
 | `gg.reliability` | executor: retry policy, per-deployment circuit breakers, fallback chains, commit point |
 | `gg.routing` | `RoutingScorer` (Jev; others plug in), threshold policy, `gg/auto`, decision cache, routing eval harness |
-| `gg.guardrails` | guard engine, policy YAML with shadow mode, rule packs, PII vault, stream guard, ONNX models, PromptGuard |
-| `gg.cache` | exact and semantic cache (Redis 8 vector search), SSE replay, single-flight, fail-open |
+| `gg.guardrails` | guard engine, policy YAML with shadow mode, rule packs, PII vault, stream guard, ONNX models, Jev injection detector, PromptGuard (off by default) |
+| `gg.cache` | exact and semantic cache (Redis 8 vector search, Jev-verified matches), SSE replay, single-flight, fail-open |
 | `gg.limits` | Lua token buckets, budget ledger, cost calculator, per-provider spend guard |
 | `gg.observability` | Prometheus metrics, request record, timing math, Langfuse traces over OTLP |
-| `gg.evalgate` | CI eval gate over the guardrail and cache suites |
+| `gg.evalgate` | eval gate over the guardrail and cache suites: live runs record, CI replays |
 
 Import boundaries are enforced by import-linter: feature packages only see each other's `base` modules, and only
 `gg.app` and `gg.cli` see everything.
