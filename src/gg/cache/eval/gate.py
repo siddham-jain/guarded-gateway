@@ -1,13 +1,13 @@
 """pair outcomes at one threshold for the ci gate (C11 §3.9): result json, item regressions, baseline"""
 
 import platform
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import UTC, datetime
 from typing import Any
 
-from gg.cache.base import Embedder
+from gg.cache.base import Embedder, SemanticVerifier
 from gg.cache.eval.pairs import Pair
-from gg.cache.eval.sweep import Scored, confusion, score_pairs
+from gg.cache.eval.sweep import Scored, confusion, score_pairs, verify_pairs
 from gg.core.jsonutil import canonical_json, sha256_hex
 
 SUITE = "cache"
@@ -17,7 +17,7 @@ _RANK = {"hit": 1, "missed": 0, "rejected": 1, "false_hit": 0}
 
 
 def outcome(scored: Scored, tau: float) -> str:
-    hit = scored.distance is not None and scored.distance <= tau
+    hit = scored.distance is not None and scored.distance <= tau and scored.verified is not False
     if scored.pair.should_hit:
         return "hit" if hit else "missed"
     return "false_hit" if hit else "rejected"
@@ -48,6 +48,10 @@ def regressions(items: Sequence[dict[str, Any]], baseline: dict[str, Any] | None
     return out
 
 
+def pair_key(pair: Pair) -> str:
+    return sha256_hex(f"{pair.anchor}\n{pair.candidate}")[:16]
+
+
 async def run_gate(
     pairs: Sequence[Pair],
     embedder: Embedder,
@@ -55,8 +59,16 @@ async def run_gate(
     tau: float,
     baseline: dict[str, Any] | None,
     num_sig: bool = True,
+    verifier: SemanticVerifier | None = None,
+    recorded: Mapping[str, float | None] | None = None,
 ) -> dict[str, Any]:
-    scored = await score_pairs(pairs, embedder, num_sig=num_sig)
+    """`recorded` replays an earlier run's distances (by pair_key) instead of embedding; a new pair misses"""
+    if recorded is None:
+        scored = await score_pairs(pairs, embedder, num_sig=num_sig)
+    else:
+        scored = [Scored(p, recorded.get(pair_key(p))) for p in pairs]
+    if verifier is not None:
+        scored = await verify_pairs(scored, verifier, tau)
     test = [s for s in scored if s.pair.split == "test"]
     dev = [s for s in scored if s.pair.split == "dev"]
     items = [
@@ -66,6 +78,7 @@ async def run_gate(
             "category": s.pair.category,
             "should_hit": s.pair.should_hit,
             "distance": None if s.distance is None else round(s.distance, 6),
+            "verified": s.verified,
             "outcome": outcome(s, tau),
         }
         for s in scored
@@ -91,6 +104,7 @@ async def run_gate(
             "platform": f"{platform.system()}-{platform.machine()}".lower(),
         },
         "metrics": {**_metrics(test, tau, ""), **_metrics(dev, tau, "dev_")},
+        "verifier_errors": sum(s.verify_failed for s in scored),
         "items": items,
         "regressions": diff,
         "gates": [],

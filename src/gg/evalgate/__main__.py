@@ -1,4 +1,7 @@
-"""python -m gg.evalgate: run the guardrail and cache evals in replay mode and gate them (C11 §3.5).
+"""python -m gg.evalgate: run the guardrail and cache evals and gate them (C11 §3.5).
+
+replay (default, ci): rule-based guards and a deterministic embedder, no network. --live adds the local
+models and the hosted detector, reads GG_MODELS_DIR and GG_PROMPTGUARD_API_KEY, and never writes baselines.
 
 exit codes (C11 §3.3): 0 pass, 1 gate failed, 2 harness, schema or git error.
 """
@@ -15,11 +18,12 @@ import orjson
 from pydantic import ValidationError
 
 from gg.config.loader import ConfigError
+from gg.config.settings import Settings
 from gg.core.jsonutil import loads
 from gg.evalgate.gates import AcceptedChange, added_entries, evaluate, parse_accepted, parse_suite
 from gg.evalgate.refs import GitError, read_at_ref
 from gg.evalgate.report import overall, render
-from gg.evalgate.suites import BASELINES, RUNNERS
+from gg.evalgate.suites import BASELINES, RUNNERS, Live
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -40,7 +44,24 @@ def _parser() -> argparse.ArgumentParser:
         help="append the markdown summary here (default $GITHUB_STEP_SUMMARY)",
     )
     parser.add_argument("--update-baselines", action="store_true", help="rewrite baseline.json from this run")
+    parser.add_argument("--live", action="store_true", help="run every guard and the production embedder")
     return parser
+
+
+def _live(args: argparse.Namespace) -> Live | None:
+    if not args.live:
+        return None
+    if args.update_baselines:
+        raise ValueError("baselines are recorded in replay mode; drop --live or --update-baselines")
+    settings = Settings()
+    if settings.models_dir is None:
+        raise ValueError("--live needs GG_MODELS_DIR (the model weights cache, e.g. .models)")
+    promptguard, jev = settings.promptguard_api_key, settings.jev_api_key
+    return Live(
+        settings.models_dir,
+        promptguard.get_secret_value() if promptguard else None,
+        jev.get_secret_value() if jev else None,
+    )
 
 
 def _read(path: Path, base_ref: str | None) -> str | None:
@@ -68,13 +89,14 @@ def _accepted(path: Path, base_ref: str | None) -> list[AcceptedChange]:
 
 async def _run(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
     results: dict[str, dict[str, Any]] = {}
+    live = _live(args)
     for suite in args.suite or RUNNERS:
         suite_dir: Path = args.evals / suite
         spec = parse_suite((suite_dir / "suite.yaml").read_text())
         if spec.suite != suite:
             raise ValueError(f"{suite_dir / 'suite.yaml'} declares suite {spec.suite!r}")
         baseline = None if args.update_baselines else _baseline(suite_dir / "baseline.json", args.base_ref)
-        raw = await RUNNERS[suite](spec, args.evals, args.config, baseline)
+        raw = await RUNNERS[suite](spec, args.evals, args.config, baseline, live)
         if args.update_baselines:
             results[suite] = raw
             continue

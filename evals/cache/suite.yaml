@@ -1,11 +1,12 @@
-# gates for python -m gg.evalgate (C11 §3.9). ci has no model weights, so pairs are scored with the
-# deterministic hashing embedder through the production tags, num_sig filter and index code; the bge-small
-# precision numbers come from python -m gg.cache.eval --embedder fastembed.
+# gates for python -m gg.evalgate (C11 §3.9). --live embeds every pair with the production model, asks jev to
+# verify the candidates and records both under cassettes/; ci replays that recording against the threshold and
+# min_score in config/cache.yaml, so loosening either shows up as a false hit here. embedder and threshold
+# below are only the stand-in used when nothing has been recorded.
 suite: cache
-version: 1.0.0
+version: 1.1.0
 embedder: {provider: hashing, name: hashing, dim: 256}
-threshold: 0.135                                 # dev τ* of the hashing embedder, not config/cache.yaml
+threshold: 0.135
 gates:
   item_regressions: {mode: gate}                 # a no_hit pair the cache rejected now hits
-  precision: {min: 0.98, mode: report}           # meaningful only with the production embedder
-  hit_rate: {max_drop: 0.05, mode: report}
+  precision: {min: 0.98, mode: gate}             # held-out pairs; C8 §8.2 target
+  hit_rate: {max_drop: 0.05, mode: gate}

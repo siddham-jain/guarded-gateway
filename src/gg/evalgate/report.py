@@ -28,12 +28,18 @@ def _headline(suite: str, result: dict[str, Any]) -> str:
     return " · ".join(_metric(name, metrics.get(name)) for name in HEADLINES.get(suite, ()))
 
 
+def _mode(results: dict[str, dict[str, Any]]) -> str:
+    if any(r.get("mode") == "live" for r in results.values()):
+        return "Live mode (local models, hosted detector, production embedder)"
+    return "Replay mode, no network"
+
+
 def render(results: dict[str, dict[str, Any]], *, base_ref: str | None) -> str:
     baseline = f"baselines and accepted changes from `{base_ref}`" if base_ref else "working-tree baselines"
     lines = [
         f"### GG eval gate: {overall(results).upper()}",
         "",
-        f"Replay mode, no network, {baseline}.",
+        f"{_mode(results)}, {baseline}.",
         "",
         "| suite | status | headline | covers |",
         "|---|---|---|---|",
@@ -45,6 +51,10 @@ def render(results: dict[str, dict[str, Any]], *, base_ref: str | None) -> str:
     for suite, r in results.items():
         lines += ["", f"#### {suite}", "", "| gate | mode | status | detail |", "|---|---|---|---|"]
         lines += [f"| {g['name']} | {g['mode']} | {g['status']} | {g['detail']} |" for g in r["gates"]]
+        errors = r.get("guard_errors")
+        if errors:
+            counts = ", ".join(f"{guard} on {n} items" for guard, n in sorted(errors.items()))
+            lines += ["", f"Guards that could not decide: {counts}."]
     regressions = [
         (suite, reg, {i["id"]: i for i in r["items"]}.get(reg["id"], {}))
         for suite, r in results.items()

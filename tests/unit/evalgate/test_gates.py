@@ -138,3 +138,18 @@ def test_markdown_lists_regressions_and_how_to_accept() -> None:
     assert "input_catch_rate 9/10 = 0.900" in md
     passed = render({"guardrails": evaluate(_result(), spec, None, [])}, base_ref=None)
     assert "Item regressions" not in passed
+
+
+def test_replay_floor_applies_to_replay_runs_and_min_to_live_ones() -> None:
+    spec = parse_suite(SUITE.replace("{min: 0.85}", "{min: 0.85, replay_min: 0.5}"))
+    replay = evaluate(_result(input_catch_rate=0.6), spec, None, [])
+    live = evaluate({**_result(input_catch_rate=0.6), "mode": "live"}, spec, None, [])
+    assert (_gates(replay)["input_catch_rate"], _gates(live)["input_catch_rate"]) == ("pass", "fail")
+    assert "Live mode" in render({"guardrails": live}, base_ref=None)
+
+
+def test_summary_names_guards_that_could_not_decide() -> None:
+    out = evaluate({**_result(), "guard_errors": {"jev_injection": 2}}, parse_suite(SUITE), None, [])
+    assert "Guards that could not decide: jev_injection on 2 items." in render(
+        {"guardrails": out}, base_ref=None
+    )

@@ -15,6 +15,8 @@ ITEM_REGRESSIONS = "item_regressions"
 class GateSpec(StrictModel):
     mode: Literal["gate", "report"] = "gate"
     min: float | None = None
+    # floor for replay runs, which have no model weights; `min` then applies to --live only
+    replay_min: float | None = None
     max: float | None = None
     max_drop: float | None = None
 
@@ -78,16 +80,17 @@ def _item_gate(
 
 
 def _metric_gate(
-    name: str, spec: GateSpec, metrics: dict[str, Any], baseline: dict[str, Any] | None
+    name: str, spec: GateSpec, metrics: dict[str, Any], baseline: dict[str, Any] | None, *, live: bool
 ) -> dict[str, Any]:
     value = metrics.get(name, {}).get("value")
     if value is None:
         return _gate(name, spec, ok=False, detail="metric not reported")
     problems: list[str] = []
     checks: list[str] = []
-    if spec.min is not None:
-        ok = value >= spec.min
-        (checks if ok else problems).append(f"{value:g} {'>=' if ok else '<'} {spec.min:g}")
+    floor = spec.min if live or spec.replay_min is None else spec.replay_min
+    if floor is not None:
+        ok = value >= floor
+        (checks if ok else problems).append(f"{value:g} {'>=' if ok else '<'} {floor:g}")
     if spec.max is not None:
         ok = value <= spec.max
         (checks if ok else problems).append(f"{value:g} {'<=' if ok else '>'} {spec.max:g}")
@@ -121,7 +124,7 @@ def evaluate(
     gates = [
         _item_gate(gate, blocking, excused)
         if name == ITEM_REGRESSIONS
-        else _metric_gate(name, gate, result["metrics"], baseline)
+        else _metric_gate(name, gate, result["metrics"], baseline, live=result.get("mode") == "live")
         for name, gate in spec.gates.items()
     ]
     return {

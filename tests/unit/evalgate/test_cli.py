@@ -29,8 +29,21 @@ def _copy_evals(dest: Path) -> Path:
     return evals
 
 
+STANDIN_SUITE = """suite: cache
+version: 1.0.0
+embedder: {provider: hashing, name: hashing, dim: 256}
+threshold: 0.135
+gates:
+  item_regressions: {mode: gate}
+"""
+
+
 def _tamper_cache_baseline(evals: Path) -> None:
-    # p0016 is a false hit today; a baseline that says rejected makes it a regression
+    # without a recording the gate scores pairs with the hashing stand-in, where p0016 is a false hit;
+    # a baseline that says rejected makes it a regression
+    shutil.rmtree(evals / "cache" / "cassettes")
+    (evals / "cache" / "suite.yaml").write_text(STANDIN_SUITE)
+    assert _run("--suite", "cache", "--evals", evals, "--update-baselines") == 0
     path = evals / "cache" / "baseline.json"
     baseline = json.loads(path.read_text())
     assert baseline["items"]["p0016"] == "false_hit"
@@ -150,3 +163,23 @@ def test_base_ref_reads_baselines_and_only_new_accepted_changes(
     assert read_at_ref("HEAD", Path("evals/cache/missing.json")) is None
     with pytest.raises(GitError):
         read_at_ref("no-such-ref", Path("evals/cache/baseline.json"))
+
+
+def test_loosening_the_cache_verifier_is_blocked(tmp_path: Path) -> None:
+    # the recording holds jev's scores, so a lower min_score replays as wrong answers being served
+    config = tmp_path / "config"
+    shutil.copytree(ROOT / "config", config)
+    cache = config / "cache.yaml"
+    text = cache.read_text()
+    assert "min_score: 0.8" in text
+    cache.write_text(text.replace("min_score: 0.8", "min_score: 0.0", 1))
+    out = tmp_path / "out"
+    assert _run("--suite", "cache", "--evals", ROOT / "evals", "--config", config, "--out-dir", out) == 1
+    gate = json.loads((out / "gate.json").read_text())["suites"]["cache"]
+    statuses = {g["name"]: g["status"] for g in gate["gates"]}
+    assert (statuses["item_regressions"], statuses["precision"]) == ("fail", "fail")
+    assert {"id": "p0016", "from": "rejected", "to": "false_hit"} in gate["regressions"]
+
+
+def test_live_mode_refuses_to_write_baselines(tmp_path: Path) -> None:
+    assert _run("--live", "--update-baselines", "--out-dir", tmp_path / "out") == 2
